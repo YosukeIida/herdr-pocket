@@ -22,12 +22,32 @@ known = sys.argv[3]
 off = int(sys.argv[4])
 home = os.path.expanduser('~')
 
+PS = None
 def ppid(p):
+    global PS
     try:
         s = open('/proc/%d/stat' % p).read()
         return int(s[s.rindex(')') + 2:].split()[1])
     except Exception:
-        return 0
+        pass
+    if PS is None:   # macOS and others without /proc: one ps for the whole walk
+        PS = {}
+        try:
+            import subprocess
+            for line in subprocess.run(['ps', '-axo', 'pid=,ppid='], capture_output=True, text=True).stdout.splitlines():
+                a = line.split()
+                if len(a) == 2: PS[int(a[0])] = int(a[1])
+        except Exception:
+            pass
+    return PS.get(p, 0)
+
+def alive(p):
+    try:
+        os.kill(p, 0); return True
+    except PermissionError:
+        return True
+    except Exception:
+        return False
 
 def under(p, root):
     n = 0
@@ -43,7 +63,7 @@ if pid:
         try: d = json.load(open(f))
         except Exception: continue
         p = int(d.get('pid') or 0)
-        if p and os.path.exists('/proc/%d' % p) and under(p, pid):
+        if p and alive(p) and under(p, pid):
             if best is None or (d.get('updatedAt') or 0) > (best.get('updatedAt') or 0): best = d
     if best: sid = best.get('sessionId') or ''
 if not sid:

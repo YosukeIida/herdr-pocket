@@ -15,8 +15,11 @@ struct HerdrApp: App {
                 // After a good connection: ask for notifications once, and keep
                 // this phone's push token registered on the box.
                 .onChange(of: store.phase) { _, phase in
-                    guard phase == .connected, !AppStore.isDemoMode else { return }
-                    Task { await Push.shared.requestIfNeeded(); await Push.shared.upload(to: store) }
+                    guard phase == .connected else { return }
+                    Task {
+                        await Push.shared.requestIfNeeded()
+                        if !AppStore.isDemoMode { await Push.shared.upload(to: store) }
+                    }
                 }
         }
     }
