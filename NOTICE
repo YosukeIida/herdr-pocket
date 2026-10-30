@@ -1,0 +1,27 @@
+Herdr for iOS (unofficial)
+Copyright 2026 Zach Zulanas
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This is an independent client for herdr (https://herdr.dev). It is not made
+or endorsed by the herdr project.
+
+Third-party material bundled in the app:
+
+- herdr-app (https://github.com/herdrdev/herdr-app), Apache-2.0:
+  the herdr app icon and mark, program icons, the Lucide-based chrome icons,
+  color themes and the program table, adapted from its defaults/ and assets/.
+- Lucide icons, ISC License (App/Resources/Assets.xcassets/License-Lucide.dataset).
+- LobeHub icons, MIT License (App/Resources/Assets.xcassets/License-LobeHub.dataset).
+- Geist, by Vercel, SIL Open Font License 1.1 (App/Resources/Fonts/OFL.txt).
+- JetBrains Mono, SIL Open Font License 1.1 (App/Resources/Fonts/OFL-JetBrainsMono.txt).
+- Symbols Nerd Font, MIT License (App/Resources/Fonts/LICENSE-SymbolsNerdFont.txt).
+
+Swift packages (fetched at build time, not vendored):
+
+- Citadel (https://github.com/orlandos-nl/Citadel), MIT License.
+- SwiftTerm (https://github.com/migueldeicaza/SwiftTerm), MIT License.
+
+The Chat view's design (conversation read from the agent's transcript, folded
+turns, a card for blocked dialogs) is inspired by Heeler
+(https://github.com/ZingerLittleBee/Heeler, Apache-2.0). No Heeler code is included.

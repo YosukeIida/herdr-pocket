@@ -1,0 +1,219 @@
+{
+ "spaces": [
+  {
+   "folder": "",
+   "tabs": [
+    {
+     "name": "",
+     "id": "tb2c8584745189c3ce63293a6828aab6a2",
+     "root": {
+      "id": "tb2c8584745189c3ce63293a6828aab6a2",
+      "children": [
+       {
+        "type": "block",
+        "content": {
+         "terminal": "t1"
+        },
+        "id": "p27d98bf3f1f89dcaf0be19a9d7b5150a"
+       }
+      ],
+      "type": "row"
+     }
+    }
+   ],
+   "name": "",
+   "id": "sp949e72a9e4d10c234548fcd08578b7a8"
+  },
+  {
+   "folder": "/home/dev",
+   "tabs": [
+    {
+     "root": {
+      "type": "row",
+      "id": "tb7423ba71174c0db106e63a9dfd036b28",
+      "children": [
+       {
+        "type": "block",
+        "content": {
+         "terminal": "t2"
+        },
+        "id": "pccd1f7c7178f7ee0b1c0bcc2b7b06607"
+       }
+      ]
+     },
+     "id": "tb7423ba71174c0db106e63a9dfd036b28",
+     "name": "Fix login redirect"
+    },
+    {
+     "root": {
+      "type": "row",
+      "id": "tb4cd9256bc861aaebc91f6767e7ace933",
+      "children": [
+       {
+        "type": "block",
+        "id": "pf698659f42a892b75e3bec72d60bbb37",
+        "content": {
+         "terminal": "t3"
+        }
+       }
+      ]
+     },
+     "id": "tb4cd9256bc861aaebc91f6767e7ace933",
+     "name": "Refactor billing"
+    }
+   ],
+   "name": "home",
+   "id": "spe0e9779a00f5d2800e4fe2131ccb83c4"
+  },
+  {
+   "folder": "/home/dev/projects/webapp",
+   "tabs": [
+    {
+     "id": "tbfe351e23493e664d68e6bedf0746c8e5",
+     "root": {
+      "id": "tbfe351e23493e664d68e6bedf0746c8e5",
+      "children": [
+       {
+        "id": "pbb45637ccbd5e3af3c0a26d95844b4bb",
+        "content": {
+         "terminal": "t4"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Write release notes"
+    },
+    {
+     "id": "tbcb45be0693c9a070f54bf384e470493f",
+     "root": {
+      "id": "tbcb45be0693c9a070f54bf384e470493f",
+      "children": [
+       {
+        "id": "p88b9d7c20b1337c9a98a7a893d147991",
+        "content": {
+         "terminal": "t5"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Add dark mode"
+    },
+    {
+     "id": "tbaa55cffed2cc4d125344f3590126a1df",
+     "root": {
+      "id": "tbaa55cffed2cc4d125344f3590126a1df",
+      "children": [
+       {
+        "id": "pa09c7889082902146d3d8239a2f23408",
+        "content": {
+         "terminal": "t6"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Flaky test triage"
+    },
+    {
+     "id": "tbe1c617622ecfb9c2bc24abdb3c5c02e3",
+     "root": {
+      "id": "tbe1c617622ecfb9c2bc24abdb3c5c02e3",
+      "children": [
+       {
+        "id": "pa95daad32ee43ee024916475b84d9e96",
+        "content": {
+         "terminal": "t14"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Docs pass"
+    },
+    {
+     "id": "tb1d924f167a6d6fca33b37ed03cd4caa6",
+     "root": {
+      "id": "tb1d924f167a6d6fca33b37ed03cd4caa6",
+      "children": [
+       {
+        "id": "p010c157e5ea714ba088fbb35e16461ce",
+        "content": {
+         "terminal": "t7"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Perf profiling"
+    },
+    {
+     "id": "tbfd98cd6fa5bed1e4ac8bd6fdb6abdc79",
+     "root": {
+      "id": "tbfd98cd6fa5bed1e4ac8bd6fdb6abdc79",
+      "children": [
+       {
+        "id": "pe1f27a1df141dde3d4a82f315c70056c",
+        "content": {
+         "terminal": "t8"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Upgrade deps"
+    }
+   ],
+   "name": "api",
+   "id": "spf0e8740efde1fda7f685c0830eccaf96"
+  },
+  {
+   "folder": "/home/dev/projects/mobile",
+   "tabs": [
+    {
+     "id": "tbfdd826116b9d105a41394d2fce95f5a9",
+     "root": {
+      "id": "tbfdd826116b9d105a41394d2fce95f5a9",
+      "children": [
+       {
+        "id": "p6a386810326489224a91d5e48eb1bb69",
+        "content": {
+         "terminal": "t10"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "API pagination"
+    },
+    {
+     "id": "tba7a5812ebc3053b1e43570228411384e",
+     "root": {
+      "id": "tba7a5812ebc3053b1e43570228411384e",
+      "children": [
+       {
+        "id": "p559b2362ef13d660b456dbaec92beb0d",
+        "content": {
+         "terminal": "t11"
+        },
+        "type": "block"
+       }
+      ],
+      "type": "row"
+     },
+     "name": "Onboarding copy"
+    }
+   ],
+   "name": "infra",
+   "id": "sp992fdd314c9622d96561669a88040af3"
+  }
+ ]
+}

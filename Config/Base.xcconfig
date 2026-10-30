@@ -1,0 +1,6 @@
+// Signing and bundle id. Put your own in Config/Local.xcconfig (gitignored);
+// see Config/Local.example.xcconfig.
+DEVELOPMENT_TEAM =
+HERDR_BUNDLE_ID = dev.herdr.ios.unofficial
+
+#include? "Local.xcconfig"
