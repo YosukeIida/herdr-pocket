@@ -64,7 +64,7 @@ struct MainView: View {
         }
         .sheet(isPresented: $nav.showSettings) { SettingsView() }
         .sheet(item: $nav.modSheet) { mod in ModFullSheet(mod: mod) }
-        .onChange(of: store.pendingOpen) { _, a in
+        .onChange(of: store.pendingOpen, initial: true) { _, a in
             guard let a else { return }
             store.pendingOpen = nil
             nav.showNewAgent = false; nav.showSettings = false; nav.modSheet = nil

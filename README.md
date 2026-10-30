@@ -23,6 +23,7 @@ A native iPhone and iPad client for [herdr](https://herdr.dev). See which of you
   - a blocked agent's dialog becomes buttons.
 - **Terminal.** The real terminal (SwiftTerm), mirroring the desktop size by default with pinch-to-zoom. A "Fit to phone" toggle resizes it to the phone instead. A glass key bar adds esc, ctrl, arrows and ^C, and a compose box sends whole prompts.
 - **New agents.** Start Claude Code, Codex, a shell or any program from herdr's list, in an existing space or a new folder, with an optional first task.
+- **Notifications.** Get "OAuth needs you" (with the agent's question and options) or "Refactor finished", even when the app is closed; tap to open that agent. Your machine sends them straight to Apple, with no relay in between.
 - **Mods.** Your own herdr mods run on the phone. A small JavaScriptCore host implements the `herdr`, `gpui-kit` and `gpui-base` APIs they use and draws their element trees in SwiftUI. Their `exec` calls run on the box.
 - **herdr's look.** It uses the Graphite and Paper themes, Geist and JetBrains Mono, and herdr's status marks, with iOS 26 Liquid Glass on the chrome only.
 
@@ -35,6 +36,22 @@ The app opens an SSH exec channel to your machine and runs `herdr-core connect`.
 - **Network:** the box has to be reachable from the phone, for example over Tailscale.
 - **Chat:** reads Claude Code's transcript on the box with a short read-only `python3` script, run through the core's `machine.exec`. It finds the session from the terminal's process tree via `~/.claude/sessions`. It reads only the tail of the transcript, then new bytes, so large transcripts stay cheap.
 - **Opening Chat** never attaches to the terminal, so it doesn't resize anything on your desktop.
+
+## Notifications
+
+iOS closes the app's SSH connection in the background, so the phone can't see an agent start waiting. Your machine sends the notification instead:
+- **The notifier:** `herdr-notify` is a short Python script running as a systemd user service. It follows `hc events` and, when an agent becomes blocked or finishes a turn, pushes to Apple over HTTP/2 with your APNs key.
+- **Your phone's address:** the app hands its push token to the machine over the open connection, in `~/.config/herdr-ios/devices/`.
+
+Setup needs a paid Apple Developer account:
+1. Create an APNs key at developer.apple.com → Certificates, IDs & Profiles → Keys, with Apple Push Notifications service enabled.
+2. Install the notifier, either from the app (Settings → Notifications → Set up on <machine>, then choose the `.p8`) or from your Mac:
+   ```sh
+   scripts/install-notifier.sh <ssh host> AuthKey_XXXXXXXXXX.p8 <team id> <bundle id>
+   ```
+3. Open Herdr while connected and allow notifications. Settings → Notifications → Send a test.
+
+The key stays on your machine in `~/.config/herdr-ios`, readable only by you. Sub-agents and plain shells don't notify, and you can tune what does in `~/.config/herdr-ios/notify.json` (`{"on": ["blocked", "done"]}`).
 
 ## Build and run
 
@@ -94,7 +111,7 @@ Tests:
 
 This is early. It's tested against herdr-core 0.1.14 on a real Linux machine. Known gaps:
 - Chat covers Claude Code only.
-- Alerts only arrive while the app is open, since iOS closes the connection in the background.
+- Replying straight from a notification (Yes/No) isn't built yet; tapping opens the agent.
 - Machines added inside herdr-core (`hc machine add`) aren't browsable yet.
 
 ## Credits

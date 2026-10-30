@@ -56,6 +56,8 @@ struct SettingsView: View {
                     Text("Only after \(m.host) was reinstalled. The next key it presents will be trusted and pinned.")
                 }
 
+                NotificationSection()
+
                 Section("Appearance") {
                     Picker("Theme", selection: $appearance) {
                         Text("System").tag("system")

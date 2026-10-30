@@ -38,6 +38,11 @@ targets:
       - package: HerdrKit
       - package: Citadel
       - package: SwiftTerm
+    entitlements:
+      path: App/Herdr.entitlements
+      properties:
+        aps-environment: development
+        com.apple.developer.usernotifications.time-sensitive: true
     info:
       path: App/Info.plist
       properties:
