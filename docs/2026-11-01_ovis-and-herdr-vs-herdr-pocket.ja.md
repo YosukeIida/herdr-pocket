@@ -113,3 +113,7 @@ herdr が提供しないもの（括弧内は根拠）:
 - `docs/guide.md:708-709` は、herdr-core ではワークスペース・タブ・ペインを作れないと書く。実際には `adapter.ts:406-448` が実装している。
 - `docs/guide.md:702` は `error` を完了として扱うと書く。実際には `snapshot.ts:54-67` が unknown に変換している。
 - `README.md:52` は ovis.sh/beta に TestFlight のベータがあると書く。そのページでは、リンクは「近日公開」とされている。
+
+## 判断（2026-11-01）
+
+所有者は、Ovis を採用せず herdr-pocket を完成させると判断した。Ovis は、PC にサーバを置かない herdr-core の native client、herdr-core 上の Claude Code の transcript からの会話、Office のプレビューという要件を満たせないためである（3 節と 6 節）。herdr-pocket に無い機能（diff、他の agent の transcript）については、Ovis を参考にする。Ovis のコードは MIT なので、流用するときは表示を残し、出典をファイルに書く。

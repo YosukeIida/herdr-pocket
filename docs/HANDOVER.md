@@ -121,6 +121,8 @@ TEST_RUNNER_HERDR_TEST_BLOCKED_TERMINAL=<address> TEST_RUNNER_HERDR_TEST_BLOCKED
 
 ## Next
 
+- Decided 2026-11-01: finish herdr-pocket instead of adopting Ovis (`docs/2026-11-01_ovis-and-herdr-vs-herdr-pocket.md`, "Decision").
+
 - Chat: Codex thread matching would be exact if Codex exposed its thread id to the terminal. If the Chat code turns out weak to extend,
   opencode and Orca's chat are acceptable references (check licenses first).
 - launchd notifier for macOS (`NotificationSettings.swift:180-205`, `scripts/install-notifier.sh`).

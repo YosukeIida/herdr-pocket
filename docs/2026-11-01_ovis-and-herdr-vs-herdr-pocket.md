@@ -111,3 +111,7 @@ Not provided by herdr (evidence in brackets):
 - `docs/guide.md:708-709` says workspaces/tabs/panes cannot be created on herdr-core; `adapter.ts:406-448` implements it.
 - `docs/guide.md:702` says `error` counts as finished; `snapshot.ts:54-67` maps it to unknown.
 - `README.md:52` points to a TestFlight beta at ovis.sh/beta; the page says the link is "coming soon".
+
+## Decision (2026-11-01)
+
+The owner decided to finish herdr-pocket rather than adopt Ovis: Ovis cannot meet the requirements of a native client for herdr-core with no server on the PC, transcript chat for Claude Code on herdr-core, and Office preview (sections 3 and 6). Ovis remains a reference for the features herdr-pocket lacks (diffs, other agents' transcripts); its code is MIT, so reuse needs the notice and the source noted in the file.
