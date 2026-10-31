@@ -93,8 +93,9 @@ enum KeyStore {
 
     // MARK: Host keys
 
-    static func hostKey(_ hostPort: String) -> String? {
-        (try? read(account: "hostkey." + hostPort)).flatMap { $0.flatMap { String(data: $0, encoding: .utf8) } }
+    /// nil only when nothing is pinned; a Keychain failure throws so it is never taken for a first connection.
+    static func hostKey(_ hostPort: String) throws -> String? {
+        try read(account: "hostkey." + hostPort).flatMap { String(data: $0, encoding: .utf8) }
     }
 
     static func setHostKey(_ line: String?, for hostPort: String) throws {

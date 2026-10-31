@@ -32,6 +32,35 @@ final class HerdrUITests: XCTestCase {
         XCTAssertTrue(start.isEnabled, "Start disabled with a space selected")
     }
 
+    /// A fresh install connecting for the first time stops at the host key, shows the
+    /// fingerprint the box really has, and reaches home only after approval.
+    /// Needs HERDR_TEST_HOST, HERDR_TEST_USER and HERDR_TEST_HOST_FP (ssh-keygen -lf of the
+    /// box's ed25519 host key); run after uninstalling the app and resetting the simulator keychain.
+    func testFirstConnectAsksForHostKey() throws {
+        let env = ProcessInfo.processInfo.environment
+        let host = try XCTUnwrap(env["HERDR_TEST_HOST"]), user = try XCTUnwrap(env["HERDR_TEST_USER"])
+        let app = XCUIApplication()
+        app.launchEnvironment["HERDR_DEBUG_KEY_PATH"] = env["HERDR_DEBUG_KEY_PATH"] ?? ""
+        app.launchEnvironment["HERDR_DEBUG_OBSERVE"] = "1"
+        app.launch()
+        let hostField = app.textFields["100.x.y.z or my-box.local"]
+        XCTAssertTrue(hostField.waitForExistence(timeout: 15), "no onboarding form")
+        hostField.tap(); hostField.typeText(host)
+        let userField = app.textFields["username"]
+        userField.tap(); userField.typeText(user)
+        app.buttons["Connect"].tap()
+
+        let fp = app.staticTexts["hostKeyFingerprint"]
+        XCTAssertTrue(fp.waitForExistence(timeout: 30), "no host key approval")
+        shot(app, "host-key-approval")
+        XCTAssertEqual(fp.label, env["HERDR_TEST_HOST_FP"], "fingerprint differs from the box's host key")
+        XCTAssertFalse(app.buttons["New agent"].exists, "reached home before approval")
+
+        app.buttons["Trust and connect"].tap()
+        XCTAssertTrue(app.buttons["New agent"].waitForExistence(timeout: 30), "did not reach home after approval")
+        shot(app, "home-after-approval")
+    }
+
     /// Chat reads a Claude agent's transcript ($HERDR_TEST_TERMINAL); folds open on tap. Never sends anything.
     func testChatRendersAndFolds() throws {
         let app = launch(["HERDR_DEBUG_OPEN": ProcessInfo.processInfo.environment["HERDR_TEST_TERMINAL"] ?? "t1"])

@@ -53,7 +53,7 @@ struct SettingsView: View {
                                     titleVisibility: .visible, presenting: confirmForget) { m in
                     Button("Forget", role: .destructive) { store.forgetHostKey(m); if store.phase != .connected { store.reconnect() } }
                 } message: { m in
-                    Text("Only after \(m.host) was reinstalled. The next key it presents will be trusted and pinned.")
+                    Text("Only after \(m.host) was reinstalled. You will be asked to approve the next key it presents.")
                 }
 
                 NotificationSection()

@@ -20,17 +20,22 @@ enum HostKeys {
         var port: Int
         var line: String
         var fingerprint: String { HostKeys.fingerprint(line) }
+        /// The command that prints this key's fingerprint on the machine itself.
+        var checkCommand: String {
+            let type = line.hasPrefix("ssh-ed25519") ? "ed25519" : line.hasPrefix("ecdsa-") ? "ecdsa" : "rsa"
+            return "ssh-keygen -lf /etc/ssh/ssh_host_\(type)_key.pub"
+        }
         var errorDescription: String? {
-            "First connection to \(host). Check its host key before trusting it: \(fingerprint)"
+            "First connection to \(host). Compare its host key with the machine before trusting it."
         }
     }
 
     /// The pinned key's fingerprint, for display.
     static func pinnedFingerprint(host: String, port: Int) -> String? {
-        pinned(host: host, port: port).map(fingerprint)
+        (try? pinned(host: host, port: port))?.map(fingerprint)
     }
 
-    static func pinned(host: String, port: Int) -> String? { KeyStore.hostKey("\(host):\(port)") }
+    static func pinned(host: String, port: Int) throws -> String? { try KeyStore.hostKey("\(host):\(port)") }
 
     static func forget(host: String, port: Int) { try? KeyStore.setHostKey(nil, for: "\(host):\(port)") }
 
@@ -54,7 +59,11 @@ enum HostKeys {
 
         func validateHostKey(hostKey: NIOSSHPublicKey, validationCompletePromise: EventLoopPromise<Void>) {
             let line = String(openSSHPublicKey: hostKey)
-            if let known = HostKeys.pinned(host: host, port: port) {
+            let known: String?
+            do { known = try HostKeys.pinned(host: host, port: port) } catch {
+                validationCompletePromise.fail(error); return
+            }
+            if let known {
                 if known == line {
                     validationCompletePromise.succeed(())
                 } else {

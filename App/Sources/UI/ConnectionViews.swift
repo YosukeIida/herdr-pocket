@@ -238,7 +238,7 @@ struct FailureView: View {
                 Image(systemName: "bolt.horizontal.circle")
                     .font(.system(size: 44, weight: .light)).foregroundStyle(HC.blocked)
                     .padding(.top, 60)
-                Text(store.phase == .idle ? "Not connected to \(store.machineTitle)" : "Couldn't reach \(store.machineTitle)")
+                Text(store.unknownHostKey != nil ? "Check \(store.machineTitle)'s host key" : store.phase == .idle ? "Not connected to \(store.machineTitle)" : "Couldn't reach \(store.machineTitle)")
                     .font(HF.ui(20, .semibold)).foregroundStyle(HC.fg)
                     .multilineTextAlignment(.center)
                 if case .failed(let msg) = store.phase {
@@ -281,7 +281,7 @@ struct FailureView: View {
                             .font(HF.mono(12.5))
                             .textSelection(.enabled)
                             .accessibilityIdentifier("hostKeyFingerprint")
-                        Text("On \(key.host), compare it with: ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub")
+                        Text("On \(key.host), compare it with: \(key.checkCommand)")
                             .font(HF.ui(13)).foregroundStyle(HC.muted)
                         Button { store.trustHostKey(key) } label: {
                             Label("Trust and connect", systemImage: "checkmark.shield")

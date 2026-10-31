@@ -74,6 +74,7 @@ final class ChatModel {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.load()
+                guard !Task.isCancelled else { return }
                 await self.pause()
             }
         }
