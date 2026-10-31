@@ -25,8 +25,10 @@ public final class HerdrClient: @unchecked Sendable {
     public var stderrText: String { lock.withLock { String(decoding: stderrBuf, as: UTF8.self) } }
 
     /// Methods the app calls; a core lacking one can't serve it.
-    public static let requiredMethods = ["terminal.run", "terminal.list", "terminal.kill", "terminal.label", "terminal.attach",
-                                         "terminal.keep", "doc.get", "doc.set", "events.subscribe", "machine.exec"]
+    public static let requiredMethods = ["terminal.run", "terminal.list", "terminal.get", "terminal.kill", "terminal.label",
+                                         "terminal.attach", "terminal.keep", "terminal.read", "terminal.send", "terminal.keys",
+                                         "terminal.interrupt", "doc.get", "doc.set", "events.subscribe", "machine.exec",
+                                         "machine.list", "server.status"]
     public static let minCoreVersion = "0.1.11"
     public static let generation: UInt64 = 1
 

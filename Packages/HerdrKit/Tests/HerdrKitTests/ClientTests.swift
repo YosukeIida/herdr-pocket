@@ -40,7 +40,7 @@ final class FakeTransport: ByteTransport, @unchecked Sendable {
 }
 
 final class ClientTests: XCTestCase {
-    static let helloLine = Data((#"{"id":0,"jsonrpc":"2.0","result":{"core":{"id":"abc","name":"devhub"},"framed":true,"generation":1,"version":"0.1.14","methods":["hello","terminal.run","terminal.list","terminal.kill","terminal.label","terminal.attach","terminal.keep","doc.get","doc.set","events.subscribe","machine.exec"]}}"# + "\n").utf8)
+    static let helloLine = Data((#"{"id":0,"jsonrpc":"2.0","result":{"core":{"id":"abc","name":"devhub"},"framed":true,"generation":1,"version":"0.1.14","methods":["hello","terminal.run","terminal.list","terminal.kill","terminal.label","terminal.attach","terminal.keep","doc.get","doc.set","events.subscribe","machine.exec","terminal.get","terminal.read","terminal.send","terminal.keys","terminal.interrupt","machine.list","server.status"]}}"# + "\n").utf8)
 
     func connected() async throws -> (HerdrClient, FakeTransport) {
         let t = FakeTransport()
