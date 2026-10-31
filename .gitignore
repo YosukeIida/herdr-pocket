@@ -18,3 +18,4 @@ App/Resources/Mods/*
 # Notes that mention real machines
 docs/private/
 App/Herdr.entitlements
+.direnv/
