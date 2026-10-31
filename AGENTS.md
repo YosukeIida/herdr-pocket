@@ -6,8 +6,8 @@ A native iPhone and iPad client for herdr-core: read and answer Claude Code and 
 
 - `Packages/HerdrKit`: protocol and model (SwiftPM, no external dependencies, unit tests). Run `swift test` there.
 - `App/Sources`: the iOS app (SwiftUI). Net (Citadel SSH, Keychain), Store (`AppStore`), UI, Chat, Mods (JavaScriptCore), Notify.
-- `project.yml`: XcodeGen spec. `Herdr.xcodeproj` is generated (`xcodegen generate`) and not tracked.
-- Requires iOS 26 or later. Develop against the iOS simulator on the Mac; the simulator reaches the Mac's own sshd at `127.0.0.1`.
+- `project.yml`: XcodeGen spec. `Herdr.xcodeproj` is generated (`xcodegen generate`) and not tracked, except its `Package.resolved`, which pins the package versions.
+- Requires iOS 26 or later. Develop against the iOS simulator on the Mac. The simulator reaches the Mac's own sshd; when sshd admits only Tailscale addresses, connect to the Mac's Tailscale IP rather than `127.0.0.1`. The build command (Metal Toolchain, ad-hoc signing) is in README, "Build and run".
 
 ## Language
 

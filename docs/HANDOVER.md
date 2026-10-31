@@ -61,9 +61,37 @@ All five targets are met on the simulator. Commits are local on `main`; nothing 
 ## Things on this Mac to undo when done
 
 - `~/.ssh/authorized_keys`: the last line, comment `herdr-pocket-simulator` (the key used by the UI
-  tests; private key in this session's scratchpad, gone after the session).
-- `~/.ssh/known_hosts`: entries for `127.0.0.1` and `<Tailscale IP>` added while testing.
-- Simulator iPhone 18 Pro: the app, its Keychain items and the saved machine.
+  tests). Its private key is `docs/private/sim_key` (gitignored); delete both together.
+- `~/.ssh/known_hosts`: entries for `127.0.0.1` and `<Tailscale IP>` added while testing
+  (`ssh-keygen -R 127.0.0.1`, `ssh-keygen -R <Tailscale IP>`).
+- Simulator iPhone 18 Pro: the app, its Keychain items and the saved machine
+  (`xcrun simctl uninstall <udid> dev.herdr.ios.unofficial`, `xcrun simctl keychain <udid> reset`).
+- Xcode's Metal Toolchain component (needed to build; keep it).
+
+## Rerunning the UI tests
+
+From the repo root, after `nix develop ./nix -c xcodegen generate`. `D` is the simulator's UDID
+(`xcrun simctl list devices`); `B` holds the shared flags.
+
+```sh
+B=(-project Herdr.xcodeproj -scheme Herdr -destination "platform=iOS Simulator,id=$D" -derivedDataPath build/dd
+   -skipPackagePluginValidation CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=)
+export TEST_RUNNER_HERDR_DEBUG_KEY_PATH=$PWD/docs/private/sim_key
+
+# First connect (fresh install and keychain first)
+xcrun simctl uninstall $D dev.herdr.ios.unofficial; xcrun simctl keychain $D reset
+TEST_RUNNER_HERDR_TEST_HOST=<Tailscale IP> TEST_RUNNER_HERDR_TEST_USER=yosuke \
+TEST_RUNNER_HERDR_TEST_HOST_FP=$(ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub | awk '{print $2}') \
+  xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testFirstConnectAsksForHostKey
+
+# Files (needs build/preview-fixtures)
+TEST_RUNNER_HERDR_TEST_SPACE=herdr-pocket TEST_RUNNER_HERDR_TEST_FILES_PATH=build/preview-fixtures \
+TEST_RUNNER_HERDR_TEST_FILES=sample.pdf,sample.docx,sample.xlsx,sample.png \
+  xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testFilesPreviewInQuickLook
+
+# Chat (a Claude Code terminal address from `hc` terminal.list)
+TEST_RUNNER_HERDR_TEST_TERMINAL=t17 xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testChatRendersAndFolds
+```
 
 ## Next
 

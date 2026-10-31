@@ -8,8 +8,8 @@ herdr-core の iPhone・iPad 用のネイティブ client。Claude Code と Code
 
 - `Packages/HerdrKit`: protocol と model（SwiftPM、外部の依存なし、単体テストあり）。テストはそのディレクトリで `swift test`。
 - `App/Sources`: iOS アプリ（SwiftUI）。Net（Citadel の SSH、Keychain）、Store（`AppStore`）、UI、Chat、Mods（JavaScriptCore）、Notify。
-- `project.yml`: XcodeGen の定義。`Herdr.xcodeproj` は生成物（`xcodegen generate`）で、追跡しない。
-- iOS 26 以上が必要。開発は Mac の iOS simulator で行い、simulator からは Mac 自身の sshd に `127.0.0.1` でつなぐ。
+- `project.yml`: XcodeGen の定義。`Herdr.xcodeproj` は生成物（`xcodegen generate`）で、追跡しない。ただし、パッケージの版を固定する `Package.resolved` だけは追跡する。
+- iOS 26 以上が必要。開発は Mac の iOS simulator で行う。simulator からは Mac 自身の sshd につなぐ。sshd が Tailscale のアドレスだけを受け付ける設定なら、`127.0.0.1` ではなく Mac の Tailscale の IP につなぐ。ビルドのコマンド（Metal Toolchain、ad-hoc の署名）は README の「Build and run」にある。
 
 ## 言語
 
