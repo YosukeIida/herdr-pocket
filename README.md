@@ -1,4 +1,6 @@
-# Herdr for iOS (unofficial)
+# herdr-pocket
+
+A fork of [zzulanas/herdr-ios](https://github.com/zzulanas/herdr-ios) that adds file preview; working rules are in `AGENTS.md`.
 
 A native iPhone and iPad client for [herdr](https://herdr.dev). See which of your coding agents need you, read and answer them, and open their live terminals. It connects over plain SSH to the `herdr-core` already running on your machine.
 
@@ -27,10 +29,11 @@ A native iPhone and iPad client for [herdr](https://herdr.dev). See which of you
   - finished turns fold behind "Worked for 5m 18s · 12 steps";
   - each tool call is one tappable line;
   - a blocked agent's dialog becomes buttons.
+- **Files.** Browse a space's folder on the box and open PDFs, Word and Excel documents, images and text in Quick Look, on the phone. Files over 8 MiB are not previewed yet.
 - **Terminal.** The real terminal (SwiftTerm), mirroring the desktop size by default with pinch-to-zoom. A "Fit to phone" toggle resizes it to the phone instead. A glass key bar adds esc, ctrl, arrows and ^C, and a compose box sends whole prompts.
 - **New agents.** Start Claude Code, Codex, a shell or any program from herdr's list, in an existing space or a new folder, with an optional first task.
 - **Notifications.** Get "OAuth needs you" (with the agent's question and options) or "Refactor finished", even when the app is closed; tap to open that agent. Your machine sends them straight to Apple, with no relay in between.
-- **Mods.** Your own herdr mods run on the phone. A small JavaScriptCore host implements the `herdr`, `gpui-kit` and `gpui-base` APIs they use and draws their element trees in SwiftUI. Their `exec` calls run on the box.
+- **Mods.** Your own herdr mods run on the phone. A small JavaScriptCore host implements the `herdr`, `gpui-kit` and `gpui-base` APIs they use and draws their element trees in SwiftUI. Their `exec` calls run on the box, except `open` and clipboard writes (`pbcopy`), which the phone handles itself.
 - **herdr's look.** It uses the Graphite and Paper themes, Geist and JetBrains Mono, and herdr's status marks, with iOS 26 Liquid Glass on the chrome only.
 
 ## How it connects
@@ -38,7 +41,7 @@ A native iPhone and iPad client for [herdr](https://herdr.dev). See which of you
 The app opens an SSH exec channel to your machine and runs `herdr-core connect`. That's the same framed JSON-RPC stream the desktop app uses for remote machines (`ssh box hc connect`). Nothing else needs to be installed on the machine, and no server or relay is involved.
 
 - **Login:** the app generates an Ed25519 key in the Keychain. Add its public key to the box's `~/.ssh/authorized_keys`; onboarding shows a copyable one-liner. A password or a pasted private key also works.
-- **Host key:** the box's host key is pinned on first connect.
+- **Host key:** on first connect the app stops before logging in and shows the box's host key fingerprint; it is pinned in the Keychain once you approve it.
 - **Network:** the box has to be reachable from the phone, for example over Tailscale.
 - **Chat:** reads Claude Code's transcript on the box with a short read-only `python3` script, run through the core's `machine.exec`. It finds the session from the terminal's process tree via `~/.claude/sessions`. It reads only the tail of the transcript, then new bytes, so large transcripts stay cheap.
 - **Opening Chat** never attaches to the terminal, so it doesn't resize anything on your desktop.
@@ -46,7 +49,7 @@ The app opens an SSH exec channel to your machine and runs `herdr-core connect`.
 ## Notifications
 
 iOS closes the app's SSH connection in the background, so the phone can't see an agent start waiting. Your machine sends the notification instead:
-- **The notifier:** `herdr-notify` is a short Python script running as a systemd user service. It follows `hc events` and, when an agent becomes blocked or finishes a turn, pushes to Apple over HTTP/2 with your APNs key.
+- **The notifier:** `herdr-notify` is a short Python script running as a systemd user service (started with nohup where there is no systemd user session, e.g. macOS). It follows `hc events` and, when an agent becomes blocked or finishes a turn, pushes to Apple over HTTP/2 with your APNs key.
 - **Your phone's address:** the app hands its push token to the machine over the open connection, in `~/.config/herdr-ios/devices/`.
 
 Setup needs a paid Apple Developer account:
@@ -65,16 +68,23 @@ Requirements:
 - **Mac:** macOS with Xcode 26.2+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 - **Phone:** iOS 26.
 - **Optional:** [bun](https://bun.sh), to bundle your mods.
-- **Your machine:** herdr-core 0.1.11+, reachable over SSH; python3 for Chat.
+- **Your machine:** herdr-core 0.1.11+, reachable over SSH; python3 for Chat and Files.
 
 ```sh
-git clone https://github.com/zzulanas/herdr-ios && cd herdr-ios
+git clone https://github.com/YosukeIida/herdr-pocket && cd herdr-pocket
 cp Config/Local.example.xcconfig Config/Local.xcconfig   # your team id and bundle id
 xcodegen generate
 open Herdr.xcodeproj                                     # run the Herdr scheme
 ```
 
-Command-line builds need `-skipPackagePluginValidation` (SwiftTerm ships a build plugin).
+Command-line builds need `-skipPackagePluginValidation` (SwiftTerm ships a build plugin) and Xcode's Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`; SwiftTerm has Metal shaders). For the simulator, sign ad hoc so the Keychain works:
+
+```sh
+xcodebuild build -project Herdr.xcodeproj -scheme Herdr -destination "platform=iOS Simulator,name=iPhone 18 Pro" \
+  -skipPackagePluginValidation CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=
+```
+
+The simulator reaches the Mac's own sshd. If sshd only admits Tailscale addresses, connect to the Mac's Tailscale IP rather than 127.0.0.1.
 
 ### Your mods
 
@@ -110,7 +120,7 @@ scripts/              mod bundling and a headless mod test
 
 Tests:
 - **Protocol and model:** `cd Packages/HerdrKit && swift test`.
-- **UI:** run the `HerdrUITests` target against a real box in watch-only mode. Set `HERDR_DEBUG_KEY_PATH` and `HERDR_TEST_TERMINAL`.
+- **UI:** run the `HerdrUITests` target against a real box in watch-only mode. Pass settings to the test runner with the `TEST_RUNNER_` prefix (e.g. `TEST_RUNNER_HERDR_DEBUG_KEY_PATH`): `HERDR_DEBUG_KEY_PATH` always; `HERDR_TEST_HOST`, `HERDR_TEST_USER`, `HERDR_TEST_HOST_FP` for first-connect approval; `HERDR_TEST_SPACE`, `HERDR_TEST_FILES_PATH`, `HERDR_TEST_FILES` for Files; `HERDR_TEST_TERMINAL` for Chat.
 - **Demo data:** `HERDR_DEMO=1` launches with fake data, which is how these screenshots were made.
 
 ## Status
