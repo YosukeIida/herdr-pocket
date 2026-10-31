@@ -160,6 +160,7 @@ for raw in data.split(b'\n'):
             emit(k='cmd', t=(name + ' ' + args).strip(), ts=ts); continue
         if s.startswith('<local-command-stdout>') or s.startswith('<local-command-caveat>') or s.startswith('Caveat:'): continue
         s = re.sub(r'<system-reminder>.*?</system-reminder>', '', s, flags=re.S).strip()
+        s = re.sub(r'^<hc from="[^"]*">(.*)</hc>$', r'\1', s, flags=re.S).strip()   # text sent with hc send
         if s: emit(k='user', t=cut(s, 8000), ts=ts)
     elif t == 'assistant':
         for b in c if isinstance(c, list) else []:

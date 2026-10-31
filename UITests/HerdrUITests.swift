@@ -117,6 +117,23 @@ final class HerdrUITests: XCTestCase {
         shot(app, "chat-after-send")
     }
 
+    /// A blocked agent's dialog becomes buttons: opens $HERDR_TEST_BLOCKED_TERMINAL (a throwaway
+    /// agent left waiting on a multiple-choice question), taps the option labelled
+    /// $HERDR_TEST_BLOCKED_OPTION and waits for the card to go away.
+    func testBlockedDialogButtons() throws {
+        let env = ProcessInfo.processInfo.environment
+        let option = try XCTUnwrap(env["HERDR_TEST_BLOCKED_OPTION"])
+        let app = launch(["HERDR_DEBUG_OPEN": try XCTUnwrap(env["HERDR_TEST_BLOCKED_TERMINAL"])])
+        let button = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", option)).firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 30), "no button for \(option)")
+        shot(app, "blocked-card")
+        button.tap()
+        let gone = NSPredicate(format: "exists == false")
+        expectation(for: gone, evaluatedWith: button)
+        waitForExpectations(timeout: 60)
+        shot(app, "after-answer")
+    }
+
     /// Chat reads a Claude agent's transcript ($HERDR_TEST_TERMINAL); folds open on tap. Never sends anything.
     func testChatRendersAndFolds() throws {
         let app = launch(["HERDR_DEBUG_OPEN": ProcessInfo.processInfo.environment["HERDR_TEST_TERMINAL"] ?? "t1"])

@@ -24,12 +24,12 @@ A native iPhone and iPad client for [herdr](https://herdr.dev). See which of you
 
 - **Agents, sorted by who needs you.** Every agent on the machine is grouped as Needs you, Working, Done or Idle, using herdr's own status words and "done while you weren't looking" rule. Sub-agents nest under their parent.
 - **Spaces and tabs.** The same spaces, tabs and panes as the desktop app, read live from the core's `herdr-app` layout document. Changes you make on one screen show up on the other.
-- **Chat** (Claude Code). An agent's conversation as native messages instead of a terminal:
+- **Chat** (Claude Code and Codex). An agent's conversation as native messages instead of a terminal:
   - prompts appear as bubbles, replies as formatted text with tables;
   - finished turns fold behind "Worked for 5m 18s · 12 steps";
   - each tool call is one tappable line;
   - a blocked agent's dialog becomes buttons.
-- **Files.** Browse a space's folder on the box and open PDFs, Word and Excel documents, images and text in Quick Look, on the phone. Files over 8 MiB are not previewed yet.
+- **Files.** Browse a space's folder on the box and open PDFs, Word, Excel and PowerPoint documents, images (including HEIC) and text in Quick Look, on the phone; Markdown is rendered as formatted text. Files over 8 MiB are not previewed yet.
 - **Terminal.** The real terminal (SwiftTerm), mirroring the desktop size by default with pinch-to-zoom. A "Fit to phone" toggle resizes it to the phone instead. A glass key bar adds esc, ctrl, arrows and ^C, and a compose box sends whole prompts.
 - **New agents.** Start Claude Code, Codex, a shell or any program from herdr's list, in an existing space or a new folder, with an optional first task.
 - **Notifications.** Get "OAuth needs you" (with the agent's question and options) or "Refactor finished", even when the app is closed; tap to open that agent. Your machine sends them straight to Apple, with no relay in between.
@@ -43,7 +43,7 @@ The app opens an SSH exec channel to your machine and runs `herdr-core connect`.
 - **Login:** the app generates an Ed25519 key in the Keychain. Add its public key to the box's `~/.ssh/authorized_keys`; onboarding shows a copyable one-liner. A password or a pasted private key also works.
 - **Host key:** on first connect the app stops before logging in and shows the box's host key fingerprint; it is pinned in the Keychain once you approve it.
 - **Network:** the box has to be reachable from the phone, for example over Tailscale.
-- **Chat:** reads Claude Code's transcript on the box with a short read-only `python3` script, run through the core's `machine.exec`. It finds the session from the terminal's process tree via `~/.claude/sessions`. It reads only the tail of the transcript, then new bytes, so large transcripts stay cheap.
+- **Chat:** reads Claude Code's transcript on the box with a short read-only `python3` script, run through the core's `machine.exec`. It finds the session from the terminal's process tree via `~/.claude/sessions`. It reads only the tail of the transcript, then new bytes, so large transcripts stay cheap. For Codex it reads the rollout the terminal's processes have open; a Codex on the shared app-server has none open, so its thread is looked up by the terminal title (the thread name) and folder in Codex's state database. A new Codex has no rollout until the first message.
 - **Opening Chat** never attaches to the terminal, so it doesn't resize anything on your desktop.
 
 ## Notifications
@@ -126,7 +126,7 @@ Tests:
 ## Status
 
 This is early. It's tested against herdr-core 0.1.14 on a real Linux machine. Known gaps:
-- Chat covers Claude Code only.
+- Codex chat on the shared app-server matches its thread by name and folder; two threads with the same name in the same folder can be confused.
 - Replying straight from a notification (Yes/No) isn't built yet; tapping opens the agent.
 - Machines added inside herdr-core (`hc machine add`) aren't browsable yet.
 

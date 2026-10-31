@@ -26,12 +26,12 @@
 
 - **agent を、対応を待っている順に並べる。** マシン上のすべての agent を Needs you、Working、Done、Idle に分ける。分類には herdr 自身の状態の語と、「見ていないあいだに終わった」の判定規則を使う。sub-agent は親の agent の下に入れ子で表示する。
 - **space と tab。** デスクトップアプリと同じ space、tab、pane を、herdr-core の `herdr-app` レイアウト文書から逐次読み込む。一方の画面で加えた変更は、もう一方の画面にも反映される。
-- **Chat**（Claude Code）。agent の会話を、terminal ではなくネイティブのメッセージとして表示する。
+- **Chat**（Claude Code と Codex）。agent の会話を、terminal ではなくネイティブのメッセージとして表示する。
   - プロンプトは吹き出しで、返答は表を含む整形済みのテキストで表示する。
   - 終わったターンは「Worked for 5m 18s · 12 steps」の下に折りたたむ。
   - 各ツール呼び出しは、タップできる 1 行で表示する。
   - ブロックされた agent のダイアログはボタンになる。
-- **Files。** マシン上の space のフォルダを閲覧し、PDF、Word と Excel の文書、画像、テキストを iPhone 上の Quick Look で開く。8 MiB を超えるファイルは、現時点ではプレビューしない。
+- **Files。** マシン上の space のフォルダを閲覧し、PDF、Word・Excel・PowerPoint の文書、画像（HEIC を含む）、テキストを iPhone 上の Quick Look で開く。Markdown は整形して表示する。8 MiB を超えるファイルは、現時点ではプレビューしない。
 - **Terminal。** 本物の terminal（SwiftTerm）である。既定ではデスクトップと同じサイズを映し、ピンチでズームできる。「Fit to phone」のトグルを使うと、代わりに iPhone の画面に合わせてサイズを変える。ガラス調のキーバーが esc、ctrl、矢印キー、^C を加え、入力欄からプロンプト全体を送れる。
 - **新しい agent。** Claude Code、Codex、shell、または herdr の一覧にある任意のプログラムを起動する。起動先は既存の space か新しいフォルダで、最初のタスクを任意で指定できる。
 - **通知。** 「OAuth needs you」（agent の質問と選択肢を含む）や「Refactor finished」を、アプリを閉じていても受け取れる。タップするとその agent を開く。通知は user のマシンから Apple へ直接送られ、間に relay は入らない。
@@ -45,7 +45,7 @@
 - **ログイン:** アプリは Ed25519 の鍵を Keychain の中に生成する。その公開鍵をマシンの `~/.ssh/authorized_keys` に追加する。オンボーディングの画面に、コピーできる 1 行のコマンドが表示される。パスワードや、貼り付けた秘密鍵でもログインできる。
 - **host key:** 初回の接続では、アプリはログインの前に止まり、マシンの host key の fingerprint を表示する。user が承認すると、その host key を Keychain に pin する。
 - **ネットワーク:** マシンは iPhone から到達できる必要がある。たとえば Tailscale を経由する。
-- **Chat:** マシン上の Claude Code の transcript を、読み取り専用の短い `python3` スクリプトで読む。スクリプトは herdr-core の `machine.exec` を通して実行する。セッションは、terminal のプロセスツリーから `~/.claude/sessions` を介して特定する。transcript は末尾だけを読み、その後は新しく追加されたバイトだけを読む。そのため、大きな transcript でも負荷は小さい。
+- **Chat:** マシン上の Claude Code の transcript を、読み取り専用の短い `python3` スクリプトで読む。スクリプトは herdr-core の `machine.exec` を通して実行する。セッションは、terminal のプロセスツリーから `~/.claude/sessions` を介して特定する。transcript は末尾だけを読み、その後は新しく追加されたバイトだけを読む。そのため、大きな transcript でも負荷は小さい。 Codex では、terminal のプロセスが開いている rollout を読む。共有の app-server につながった Codex は rollout を開いていないので、terminal の title（thread の名前）とフォルダから、Codex の state のデータベースで thread を引く。起動したばかりの Codex は、最初のメッセージを送るまで rollout を持たない。
 - **Chat を開くとき**は terminal に attach しない。そのため、デスクトップ側のサイズは何も変わらない。
 
 ## 通知
@@ -128,7 +128,7 @@ scripts/              mod bundling and a headless mod test
 ## 状況
 
 本アプリは初期段階である。実機の Linux マシン上の herdr-core 0.1.14 に対して試験している。既知の未対応点は次のとおりである。
-- Chat は Claude Code にだけ対応する。
+- 共有の app-server につながった Codex のチャットは、thread を名前とフォルダで照合する。同じフォルダに同じ名前の thread が 2 つあると、取り違えうる。
 - 通知から直接返答する機能（Yes/No）はまだ実装していない。タップすると agent を開く。
 - herdr-core の中で追加したマシン（`hc machine add`）は、まだ閲覧できない。
 

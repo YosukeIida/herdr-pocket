@@ -53,8 +53,21 @@ All five targets are met on the simulator. Commits are local on `main`; nothing 
   (`Frame.maxPayload / 2`), larger files are refused (`shortcut:` in the code; the code-review
   document's "read in chunks" is not built yet). `testFilesPreviewInQuickLook` opens a PDF, docx,
   xlsx and png from `build/preview-fixtures/` (gitignored; recreate with textutil, cupsfilter, sips
-  and openpyxl via uvx; the png must be opaque). pptx is not tested.
-- Chat: `testChatRendersAndFolds` passes against a live Claude Code terminal on this Mac.
+  and openpyxl via uvx; the png must be opaque; md, html, json, csv, swift, svg, jpg, gif, heic and
+  pptx were added by hand). All of them open; Markdown opens in Chat's renderer instead of Quick Look,
+  which shows the raw source. HTML without a viewport and SVG show small (desktop scale, intrinsic size).
+- Chat (1f37e96): Claude Code and Codex. `testChatRendersAndFolds` and `testChatSendGetsReply` pass
+  against throwaway terminals (`hc run --bg --name claude-chat-test claude --strict-mcp-config`,
+  and `CODEX_HOME=$HOME/.codex-labteam hc run --bg --name codex-chat-test codex`, both in this repo):
+  the message sent from the phone reaches the agent and its reply shows. A Codex on the shared
+  app-server holds no rollout; its thread is matched by terminal title and folder in
+  `~/.codex*/state_*.sqlite` (a `shortcut:` in `CodexTranscriptScript.swift`).
+- Blocked dialogs (BlockedCard): `testBlockedDialogButtons` passes. A throwaway Claude Code was asked
+  to use AskUserQuestion; tapping "Teal" in Chat answered it and the agent replied TEAL. Fixed on the
+  way: options separated by description lines were not read (only the last one was).
+- Transcript reads while a Claude agent works: 7 runs of the read script in a 150 s window (sampled
+  with `pgrep -f "import sys, os, json, glob, re"`; macOS python3 re-execs as `Python`, so
+  `pgrep -f "python3 -c"` sees none). Before 407eccd every title change (about every 0.1 s) woke it.
 - Reviews: every unit had a Codex review; the fixes made for them were reviewed once more
   (`docs/reviews/2026-11-01-review-fixes-codex.md`, no defects).
 
@@ -90,16 +103,24 @@ TEST_RUNNER_HERDR_TEST_SPACE=herdr-pocket TEST_RUNNER_HERDR_TEST_FILES_PATH=buil
 TEST_RUNNER_HERDR_TEST_FILES=sample.pdf,sample.docx,sample.xlsx,sample.png \
   xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testFilesPreviewInQuickLook
 
-# Chat (a Claude Code terminal address from `hc` terminal.list)
+# Chat: read (a Claude Code or Codex terminal address from `hc ls`)
 TEST_RUNNER_HERDR_TEST_TERMINAL=t17 xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testChatRendersAndFolds
+
+# Chat: send to a throwaway agent and wait for the reply (the reply must not occur in the prompt)
+TEST_RUNNER_HERDR_TEST_SEND_TERMINAL=<address> TEST_RUNNER_HERDR_TEST_SEND_EXPECT="ONE TWO THREE" \
+TEST_RUNNER_HERDR_TEST_SEND_TEXT="Write the English words for the numbers one to three in capital letters on one line, separated by single spaces, and nothing else." \
+  xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testChatSendGetsReply
+
+# Blocked dialog: leave a throwaway Claude Code waiting on AskUserQuestion first
+TEST_RUNNER_HERDR_TEST_BLOCKED_TERMINAL=<address> TEST_RUNNER_HERDR_TEST_BLOCKED_OPTION=Teal \
+  xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testBlockedDialogButtons
 ```
 
 ## Next
 
-- Codex chat: a rollout reader beside `TranscriptScript`, selected by program
-  (`AgentScreen.swift:13`, `ChatModel.swift:107`). If the Chat code turns out weak to extend,
+- Chat: Codex thread matching would be exact if Codex exposed its thread id to the terminal. If the Chat code turns out weak to extend,
   opencode and Orca's chat are acceptable references (check licenses first).
 - launchd notifier for macOS (`NotificationSettings.swift:180-205`, `scripts/install-notifier.sh`).
-- Files: chunked reads above 12 MiB; pptx and HTML/md rendering checks.
+- Files: chunked reads above 8 MiB; HTML/SVG scaled to the screen (WKWebView) if that matters.
 - Run on a real iPhone (needs `Config/Local.xcconfig` with a team id).
 - Citadel: close the channel on handshake failure (fork + upstream PR), see `docs/reviews/PENDING.md`.

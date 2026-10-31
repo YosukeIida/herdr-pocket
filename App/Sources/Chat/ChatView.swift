@@ -498,7 +498,8 @@ private struct BlockedCard: View {
         }
     }
 
-    /// The bottom-most run of "❯ 1. Yes" / "  2. No" lines, and the text above it.
+    /// The bottom-most "❯ 1. Yes" / "  2. No" options, counting down to 1, and the text above them.
+    /// Options may be separated by description lines and rules (Claude Code's AskUserQuestion).
     static func parse(_ screen: String) -> Dialog? {
         let lines = screen.components(separatedBy: "\n").map { l in
             l.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "│┃|"))
@@ -507,11 +508,15 @@ private struct BlockedCard: View {
         let rx = /^(?:[❯›>]\s*)?(\d)[.)]\s+(.+)$/
         var options: [(String, String)] = []
         var firstOption = -1
+        var gap = 0
         for i in stride(from: lines.count - 1, through: 0, by: -1) {
-            if let m = lines[i].wholeMatch(of: rx) {
-                options.insert((String(m.1), String(m.2)), at: 0); firstOption = i
-            } else if !options.isEmpty, !lines[i].isEmpty {
-                break
+            if let m = lines[i].wholeMatch(of: rx), let n = Int(m.1),
+               options.isEmpty || n == Int(options[0].0)! - 1 {
+                options.insert((String(m.1), String(m.2)), at: 0); firstOption = i; gap = 0
+                if n == 1 { break }
+            } else if !options.isEmpty {
+                gap += 1
+                if gap > 3 { break }
             }
         }
         guard !options.isEmpty, firstOption > 0 else { return nil }
