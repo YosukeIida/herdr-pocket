@@ -61,6 +61,35 @@ final class HerdrUITests: XCTestCase {
         shot(app, "home-after-approval")
     }
 
+    /// Files: from a space ($HERDR_TEST_SPACE) walk $HERDR_TEST_FILES_PATH (slash-separated folders
+    /// under the space folder) and open each of $HERDR_TEST_FILES (comma-separated) in Quick Look.
+    /// Needs a pinned host key (run testFirstConnectAsksForHostKey first).
+    func testFilesPreviewInQuickLook() throws {
+        let env = ProcessInfo.processInfo.environment
+        let app = launch(["HERDR_DEBUG_OPEN": try XCTUnwrap(env["HERDR_TEST_SPACE"])])
+        let files = app.buttons["Files"]
+        XCTAssertTrue(files.waitForExistence(timeout: 30), "no Files button in the space")
+        files.tap()
+        for folder in (env["HERDR_TEST_FILES_PATH"] ?? "").split(separator: "/") {
+            let row = app.buttons[String(folder)]
+            XCTAssertTrue(row.waitForExistence(timeout: 20), "no folder \(folder)")
+            row.tap()
+        }
+        for name in try XCTUnwrap(env["HERDR_TEST_FILES"]).split(separator: ",").map(String.init) {
+            let row = app.buttons[name]
+            XCTAssertTrue(row.waitForExistence(timeout: 20), "no file \(name)")
+            row.tap()
+            let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton'")).firstMatch
+            // Images open full screen with the controls hidden; a tap brings them back.
+            if !done.waitForExistence(timeout: 15) { app.tap() }
+            XCTAssertTrue(done.waitForExistence(timeout: 15), "Quick Look did not open \(name)")
+            sleep(2)
+            shot(app, "preview-\(name)")
+            done.tap()
+            XCTAssertTrue(row.waitForExistence(timeout: 10), "did not return to the list after \(name)")
+        }
+    }
+
     /// Chat reads a Claude agent's transcript ($HERDR_TEST_TERMINAL); folds open on tap. Never sends anything.
     func testChatRendersAndFolds() throws {
         let app = launch(["HERDR_DEBUG_OPEN": ProcessInfo.processInfo.environment["HERDR_TEST_TERMINAL"] ?? "t1"])

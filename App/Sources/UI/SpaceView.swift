@@ -9,6 +9,7 @@ struct SpaceView: View {
     @Environment(\.horizontalSizeClass) private var hsc
     var spaceID: String
     @State private var paneIndex = 0
+    @State private var showFiles = false
 
     private var space: SpaceRef? { store.spaces.first { $0.id == spaceID } }
 
@@ -78,10 +79,15 @@ struct SpaceView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
+                Button { showFiles = true } label: { Image(systemName: "folder") }
+                    .accessibilityLabel("Files")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button { nav.newAgentSpace = space.id; nav.showNewAgent = true } label: { Image(systemName: "plus") }
                     .accessibilityLabel("New agent in this space")
             }
         }
+        .sheet(isPresented: $showFiles) { FilesSheet(folder: space.folder, title: name.isEmpty ? "~" : name) }
         .onAppear { store.selectedSpaceID = space.id }
     }
 }
