@@ -23,6 +23,9 @@ struct FilesView: View {
     @State private var opening: String?
     @State private var fetch: Task<Void, Never>?
     @State private var preview: URL?
+    @State private var markdown: MarkdownDoc?
+
+    struct MarkdownDoc: Identifiable { var name: String; var text: String; var id: String { name } }
 
     /// The largest file read in one machine.exec. The reply is base64 (4/3) inside JSON in one
     /// frame of `Frame.maxPayload` (16 MiB); half of it leaves room for the envelope and stderr.
@@ -88,6 +91,15 @@ struct FilesView: View {
         .task { await load() }
         .refreshable { await load() }
         .quickLookPreview($preview)
+        .sheet(item: $markdown) { doc in
+            NavigationStack {
+                ScrollView { ChatMarkdown(text: doc.text).padding(16).frame(maxWidth: .infinity, alignment: .leading) }
+                    .background(HC.canvas)
+                    .navigationTitle(doc.name)
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", systemImage: "xmark") { markdown = nil }.accessibilityIdentifier("markdownClose") } }
+            }
+        }
         .onChange(of: preview) { old, new in if new == nil, let old { Self.discard(old) } }
         // Why not discard the preview here as well: presenting Quick Look can fire onDisappear while it shows the file.
         .onDisappear { fetch?.cancel(); fetch = nil; opening = nil }
@@ -164,6 +176,12 @@ struct FilesView: View {
                                              cwd: nil, on: nil, timeout: 60, input: nil)
                 guard !Task.isCancelled else { return }
                 guard r.code == 0, !r.timedOut else { error = Self.failure(r, "Couldn't read \(e.name)"); return }
+                // Why not Quick Look for Markdown: it shows the raw source; Chat's renderer formats it.
+                if ["md", "markdown"].contains((e.name as NSString).pathExtension.lowercased()), let s = String(data: r.stdout, encoding: .utf8) {
+                    error = nil
+                    markdown = MarkdownDoc(name: e.name, text: s)
+                    return
+                }
                 // A folder per preview, so a slow earlier fetch can never replace or delete this one.
                 let folder = FileManager.default.temporaryDirectory
                     .appendingPathComponent("preview", isDirectory: true)

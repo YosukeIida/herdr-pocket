@@ -2,7 +2,7 @@ import SwiftUI
 import HerdrKit
 
 /// An agent's page: its conversation (Chat) or its live terminal. Chat is
-/// offered for Claude Code, whose transcript the box can read; the choice is
+/// offered for Claude Code and Codex, whose transcripts the box can read; the choice is
 /// app-wide and remembered.
 struct AgentScreen: View {
     let address: String
@@ -10,7 +10,7 @@ struct AgentScreen: View {
     @AppStorage("agentViewMode") private var mode = "chat"
 
     var body: some View {
-        let canChat = store.programKey(of: address) == "claude"
+        let canChat = ["claude", "codex"].contains(store.programKey(of: address))
         Group {
             if canChat && mode == "chat" {
                 ChatScreen(address: address)

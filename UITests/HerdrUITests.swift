@@ -14,6 +14,14 @@ final class HerdrUITests: XCTestCase {
         return app
     }
 
+    /// Waits for a list row, scrolling down when it is off screen (lists load rows lazily).
+    private func reveal(_ row: XCUIElement, in app: XCUIApplication) -> Bool {
+        if row.waitForExistence(timeout: 15) && row.isHittable { return true }
+        for _ in 0..<8 where !(row.exists && row.isHittable) { app.swipeUp() }
+        for _ in 0..<16 where !(row.exists && row.isHittable) { app.swipeDown() }
+        return row.exists && row.isHittable
+    }
+
     private func shot(_ app: XCUIApplication, _ name: String) {
         let a = XCTAttachment(screenshot: app.screenshot()); a.name = name; a.lifetime = .keepAlways; add(a)
     }
@@ -72,14 +80,15 @@ final class HerdrUITests: XCTestCase {
         files.tap()
         for folder in (env["HERDR_TEST_FILES_PATH"] ?? "").split(separator: "/") {
             let row = app.buttons[String(folder)]
-            XCTAssertTrue(row.waitForExistence(timeout: 20), "no folder \(folder)")
+            XCTAssertTrue(reveal(row, in: app), "no folder \(folder)")
             row.tap()
         }
         for name in try XCTUnwrap(env["HERDR_TEST_FILES"]).split(separator: ",").map(String.init) {
             let row = app.buttons[name]
-            XCTAssertTrue(row.waitForExistence(timeout: 20), "no file \(name)")
+            XCTAssertTrue(reveal(row, in: app), "no file \(name)")
             row.tap()
-            let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton'")).firstMatch
+            // Quick Look, or the app's own sheet for Markdown.
+            let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton' OR identifier == 'markdownClose'")).firstMatch
             // Images open full screen with the controls hidden; a tap brings them back.
             if !done.waitForExistence(timeout: 15) { app.tap() }
             XCTAssertTrue(done.waitForExistence(timeout: 15), "Quick Look did not open \(name)")
@@ -88,6 +97,24 @@ final class HerdrUITests: XCTestCase {
             done.tap()
             XCTAssertTrue(row.waitForExistence(timeout: 10), "did not return to the list after \(name)")
         }
+    }
+
+    /// Chat sends: types $HERDR_TEST_SEND_TEXT into the composer of $HERDR_TEST_SEND_TERMINAL (a
+    /// throwaway Claude Code or Codex), sends it, and waits for a reply line equal to
+    /// $HERDR_TEST_SEND_EXPECT, which must not appear in the text sent.
+    func testChatSendGetsReply() throws {
+        let env = ProcessInfo.processInfo.environment
+        let text = try XCTUnwrap(env["HERDR_TEST_SEND_TEXT"]), expect = try XCTUnwrap(env["HERDR_TEST_SEND_EXPECT"])
+        XCTAssertFalse(text.contains(expect), "the expected reply is part of the prompt")
+        let app = launch(["HERDR_DEBUG_OPEN": try XCTUnwrap(env["HERDR_TEST_SEND_TERMINAL"])])
+        let field = app.textViews.firstMatch.exists ? app.textViews.firstMatch : app.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 30), "no composer")
+        field.tap()
+        field.typeText(text)
+        app.buttons["Send"].tap()
+        let reply = app.staticTexts.matching(NSPredicate(format: "label == %@", expect)).firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 120), "no reply \(expect) in Chat")
+        shot(app, "chat-after-send")
     }
 
     /// Chat reads a Claude agent's transcript ($HERDR_TEST_TERMINAL); folds open on tap. Never sends anything.

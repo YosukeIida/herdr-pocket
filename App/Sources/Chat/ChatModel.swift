@@ -40,7 +40,7 @@ struct ChatTurn: Identifiable, Equatable {
     var startedAt: Date?
 }
 
-/// Reads an agent's Claude Code transcript from the box and folds it into
+/// Reads an agent's Claude Code or Codex transcript from the box and folds it into
 /// turns. Polls quickly while the agent works, slowly otherwise; never
 /// attaches to (or resizes) the terminal.
 @MainActor @Observable
@@ -107,10 +107,13 @@ final class ChatModel {
     private func load() async {
         guard let store, store.phase == .connected, let rec = store.terminals[address] else { return }
         let pid = rec.raw["pid"].int.map(String.init) ?? "0"
-        let argv = String(decoding: rec.raw["argv"].encoded(), as: UTF8.self)
+        let codex = store.programKey(of: address) == "codex"
+        let script = codex ? CodexTranscriptScript.source : TranscriptScript.source
+        let context: JSONValue = codex ? ["title": .string(rec.title), "cwd": .string(rec.cwd)] : rec.raw["argv"]
+        let argv = String(decoding: context.encoded(), as: UTF8.self)
         for _ in 0..<4 {   // follow "more" a few times on a big backlog
             do {
-                let r = try await store.exec(argv: ["python3", "-c", TranscriptScript.source, pid, argv, session, String(offset)],
+                let r = try await store.exec(argv: ["python3", "-c", script, pid, argv, session, String(offset)],
                                              cwd: nil, on: nil, timeout: 20, input: nil)
                 guard r.code == 0 else {
                     let err = String(decoding: r.stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -130,9 +133,10 @@ final class ChatModel {
         var lines = data.split(separator: UInt8(ascii: "\n"))
         guard !lines.isEmpty, let head = try? JSONValue.parse(Data(lines.removeFirst())) else { return false }
         if let why = head["why"].string {
+            let agent = store?.programKey(of: address) == "codex" ? "Codex" : "Claude Code"
             phase = .unavailable(why == "no-session"
-                ? "No Claude Code conversation found for this terminal yet."
-                : "Claude Code's transcript for this session isn't on disk yet.")
+                ? "No \(agent) conversation found for this terminal yet."
+                : "\(agent)'s transcript for this session isn't on disk yet.")
             return false
         }
         let fresh = head["fresh"].bool ?? false
