@@ -125,7 +125,6 @@ TEST_RUNNER_HERDR_TEST_BLOCKED_TERMINAL=<address> TEST_RUNNER_HERDR_TEST_BLOCKED
 
 - Chat: Codex thread matching would be exact if Codex exposed its thread id to the terminal. If the Chat code turns out weak to extend,
   opencode and Orca's chat are acceptable references (check licenses first).
-- launchd notifier for macOS (`NotificationSettings.swift:180-205`, `scripts/install-notifier.sh`).
 - Files: chunked reads above 8 MiB; HTML/SVG scaled to the screen (WKWebView) if that matters.
 - Run on a real iPhone (needs `Config/Local.xcconfig` with a team id).
 - Citadel: close the channel on handshake failure (fork + upstream PR), see `docs/reviews/PENDING.md`.

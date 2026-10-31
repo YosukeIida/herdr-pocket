@@ -146,7 +146,7 @@ private struct NotifierSetup: View {
                         Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(HC.blocked).font(HF.ui(13.5))
                     }
                 } footer: {
-                    Text("Copies herdr-notify (a short Python script) to \(store.machineTitle), runs it as a systemd user service, and sends a test notification.")
+                    Text("Copies herdr-notify (a short Python script) to \(store.machineTitle), runs it as a service (launchd on macOS, systemd on Linux), and sends a test notification.")
                 }
             }
             .navigationTitle("Notifications")
@@ -171,26 +171,13 @@ private struct NotifierSetup: View {
     }
 
     private func install() {
-        guard let keyPEM, let script = Bundle.main.url(forResource: "herdr-notify", withExtension: "py").flatMap({ try? Data(contentsOf: $0) }) else {
+        guard let keyPEM, let script = Bundle.main.url(forResource: "herdr-notify", withExtension: "py").flatMap({ try? Data(contentsOf: $0) }),
+              let service = Bundle.main.url(forResource: "install-service", withExtension: "sh").flatMap({ try? Data(contentsOf: $0) }) else {
             error = "The notifier script is missing from the app."; return
         }
         error = nil
         let apns: [String: Any] = ["key_id": keyID, "team_id": teamID, "bundle_id": Bundle.main.bundleIdentifier ?? "",
                                    "key_path": "~/.config/herdr-ios/AuthKey.p8"]
-        let unit = """
-        [Unit]
-        Description=Herdr for iOS push notifications
-        After=network-online.target
-
-        [Service]
-        ExecStart=/usr/bin/env python3 %h/.config/herdr-ios/herdr-notify.py
-        Restart=always
-        RestartSec=5
-
-        [Install]
-        WantedBy=default.target
-
-        """
         Task {
             do {
                 step = "Key"
@@ -200,8 +187,7 @@ private struct NotifierSetup: View {
                 step = "Script"
                 try await put("herdr-notify.py", script, mode: "755")
                 step = "Service"
-                try await sh(#"mkdir -p "$HOME/.config/systemd/user" && cat > "$HOME/.config/systemd/user/herdr-notify.service""#, input: Data(unit.utf8))
-                try await sh(#"if systemctl --user show-environment >/dev/null 2>&1; then systemctl --user daemon-reload && systemctl --user enable herdr-notify >/dev/null 2>&1; systemctl --user restart herdr-notify; else pkill -f herdr-notify.py; nohup python3 "$HOME/.config/herdr-ios/herdr-notify.py" >"$HOME/.config/herdr-ios/notify.log" 2>&1 & fi"#)
+                try await sh(#"sh -s"#, input: service)
                 step = "Test"
                 await Push.shared.upload(to: store, force: true)
                 try await sh(#"python3 "$HOME/.config/herdr-ios/herdr-notify.py" --test"#)

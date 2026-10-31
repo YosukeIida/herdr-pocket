@@ -49,7 +49,7 @@ The app opens an SSH exec channel to your machine and runs `herdr-core connect`.
 ## Notifications
 
 iOS closes the app's SSH connection in the background, so the phone can't see an agent start waiting. Your machine sends the notification instead:
-- **The notifier:** `herdr-notify` is a short Python script running as a systemd user service (started with nohup where there is no systemd user session, e.g. macOS). It follows `hc events` and, when an agent becomes blocked or finishes a turn, pushes to Apple over HTTP/2 with your APNs key.
+- **The notifier:** `herdr-notify` is a short Python script running as a service: a launchd agent (`dev.herdr.notify`) on macOS, a systemd user service on Linux, or nohup where neither exists. It follows `hc events` and, when an agent becomes blocked or finishes a turn, pushes to Apple over HTTP/2 with your APNs key.
 - **Your phone's address:** the app hands its push token to the machine over the open connection, in `~/.config/herdr-ios/devices/`.
 
 Setup needs a paid Apple Developer account:

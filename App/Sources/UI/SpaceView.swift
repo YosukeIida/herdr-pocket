@@ -10,6 +10,7 @@ struct SpaceView: View {
     var spaceID: String
     @State private var paneIndex = 0
     @State private var showFiles = false
+    @State private var showChanges = false
 
     private var space: SpaceRef? { store.spaces.first { $0.id == spaceID } }
 
@@ -79,6 +80,10 @@ struct SpaceView: View {
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
+                Button { showChanges = true } label: { Image(systemName: "plusminus") }
+                    .accessibilityLabel("Changes")
+            }
+            ToolbarItem(placement: .topBarTrailing) {
                 Button { showFiles = true } label: { Image(systemName: "folder") }
                     .accessibilityLabel("Files")
             }
@@ -88,6 +93,7 @@ struct SpaceView: View {
             }
         }
         .sheet(isPresented: $showFiles) { FilesSheet(folder: space.folder, title: name.isEmpty ? "~" : name) }
+        .sheet(isPresented: $showChanges) { ChangesSheet(folder: space.folder, title: name.isEmpty ? "~" : name) }
         .onAppear { store.selectedSpaceID = space.id }
     }
 }

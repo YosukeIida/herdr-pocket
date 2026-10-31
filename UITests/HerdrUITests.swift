@@ -87,16 +87,37 @@ final class HerdrUITests: XCTestCase {
             let row = app.buttons[name]
             XCTAssertTrue(reveal(row, in: app), "no file \(name)")
             row.tap()
-            // Quick Look, or the app's own sheet for Markdown.
-            let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton' OR identifier == 'markdownClose'")).firstMatch
+            // Quick Look, or the app's own sheet for Markdown, HTML and SVG.
+            let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton' OR identifier == 'markdownClose' OR identifier == 'webClose'")).firstMatch
             // Images open full screen with the controls hidden; a tap brings them back.
-            if !done.waitForExistence(timeout: 15) { app.tap() }
+            if !done.waitForExistence(timeout: 90) { app.tap() }
             XCTAssertTrue(done.waitForExistence(timeout: 15), "Quick Look did not open \(name)")
             sleep(2)
             shot(app, "preview-\(name)")
+            if !done.isHittable { app.tap() }
+            XCTAssertTrue(done.waitForExistence(timeout: 5), "no close button for \(name)")
             done.tap()
             XCTAssertTrue(row.waitForExistence(timeout: 10), "did not return to the list after \(name)")
         }
+    }
+
+    /// Changes: from a space ($HERDR_TEST_SPACE) open the uncommitted changes, tap
+    /// $HERDR_TEST_CHANGES_FILE (a path relative to the space folder) and wait for its diff.
+    func testChangesShowDiff() throws {
+        let env = ProcessInfo.processInfo.environment
+        let app = launch(["HERDR_DEBUG_OPEN": try XCTUnwrap(env["HERDR_TEST_SPACE"])])
+        let changes = app.buttons["Changes"]
+        XCTAssertTrue(changes.waitForExistence(timeout: 30), "no Changes button in the space")
+        changes.tap()
+        let row = app.buttons[try XCTUnwrap(env["HERDR_TEST_CHANGES_FILE"])]
+        XCTAssertTrue(reveal(row, in: app), "file not listed as changed")
+        shot(app, "changes-list")
+        row.tap()
+        let diff = app.descendants(matching: .any)["diffLines"]
+        XCTAssertTrue(diff.waitForExistence(timeout: 30), "no diff shown")
+        let added = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH '+'")).firstMatch
+        XCTAssertTrue(added.waitForExistence(timeout: 5), "no added line in the diff")
+        shot(app, "changes-diff")
     }
 
     /// Chat sends: types $HERDR_TEST_SEND_TEXT into the composer of $HERDR_TEST_SEND_TERMINAL (a

@@ -51,7 +51,7 @@
 ## 通知
 
 iOS はバックグラウンドでアプリの SSH 接続を閉じるため、iPhone は agent が待ち状態に入ったことを検知できない。代わりに user のマシンが通知を送る。
-- **notifier:** `herdr-notify` は短い Python スクリプトであり、systemd の user サービスとして動く（systemd の user セッションがない環境、たとえば macOS では nohup で起動する）。`hc events` を追い、agent がブロックされるかターンを終えると、user の APNs 鍵を使って HTTP/2 で Apple へ push する。
+- **notifier:** `herdr-notify` は短い Python スクリプトであり、サービスとして動く（macOS では launchd の agent `dev.herdr.notify`、Linux では systemd の user サービス、どちらも無い環境では nohup で起動する）。`hc events` を追い、agent がブロックされるかターンを終えると、user の APNs 鍵を使って HTTP/2 で Apple へ push する。
 - **iPhone の宛先:** アプリは、開いている接続を通して自身の push token をマシンの `~/.config/herdr-ios/devices/` に渡す。
 
 設定には有料の Apple Developer アカウントが必要である。

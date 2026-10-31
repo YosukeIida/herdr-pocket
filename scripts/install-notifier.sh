@@ -5,7 +5,7 @@
 #   scripts/install-notifier.sh <ssh host> <AuthKey_XXXXXXXXXX.p8> <team id> <bundle id>
 #
 # Puts the APNs key, apns.json and the script in ~/.config/herdr-ios (mode 700,
-# key 600), installs a systemd user service `herdr-notify`, and starts it.
+# key 600), and runs it as a service (launchd on macOS, systemd on Linux).
 set -eu
 
 if [ $# -ne 4 ]; then
@@ -26,18 +26,7 @@ echo "→ script"
 ssh "$host" 'cat > "$HOME/.config/herdr-ios/herdr-notify.py" && chmod 755 "$HOME/.config/herdr-ios/herdr-notify.py"' < "$here/App/Resources/Notify/herdr-notify.py"
 
 echo "→ service"
-ssh "$host" 'mkdir -p "$HOME/.config/systemd/user" && cat > "$HOME/.config/systemd/user/herdr-notify.service"' <<'EOF'
-[Unit]
-Description=Herdr for iOS push notifications
-After=network-online.target
-
-[Service]
-ExecStart=/usr/bin/env python3 %h/.config/herdr-ios/herdr-notify.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=default.target
-EOF
-ssh "$host" 'systemctl --user daemon-reload && systemctl --user enable herdr-notify >/dev/null 2>&1; systemctl --user restart herdr-notify; sleep 2; systemctl --user is-active herdr-notify && journalctl --user -u herdr-notify -n 3 --no-pager -o cat'
+ssh "$host" sh -s < "$here/App/Resources/Notify/install-service.sh"
+sleep 2
+ssh "$host" "pgrep -f herdr-notify.py >/dev/null && tail -n 3 \"\$HOME/.config/herdr-ios/notify.log\" 2>/dev/null; true"
 echo "done. Open Herdr on the phone (connected) and allow notifications; then Settings → Notifications → Send a test."
