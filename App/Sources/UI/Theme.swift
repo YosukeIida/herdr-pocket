@@ -2,14 +2,13 @@ import SwiftUI
 import UIKit
 import HerdrKit
 
-// CONTRACT (owned by the UI builder): fill in from docs/SPEC.md §6.
 enum HerdrTheme {
     /// Token name -> "#rrggbb[aa]" for dark (Graphite) or light (Paper);
     /// includes ansi0..ansi15, working/blocked/done/idle, background, foreground, ...
     /// The mod host passes this to mods' theme().
     static func tokens(dark: Bool) -> [String: String] { dark ? graphite : paper }
 
-    // MARK: Palettes (SPEC §6, resolved with settings.rs rules)
+    // MARK: Palettes (resolved with settings.rs rules)
 
     private static let graphiteAnsi = ["#45484f", "#dc8c95", "#a6bd91", "#d8be87", "#96b2d7", "#b5a2ce", "#8cbdc3", "#d2d4d9",
                                        "#818793", "#f0a5ad", "#bad5a2", "#ead2a1", "#b0cbef", "#cbb7e6", "#a4d5db", "#f0f0f2"]
@@ -163,7 +162,7 @@ enum HF {
     }
 }
 
-// MARK: Metrics (SPEC §6)
+// MARK: Metrics
 
 enum HM {
     static let rowHeight: CGFloat = 44          // touch-friendly version of the 30pt desktop row

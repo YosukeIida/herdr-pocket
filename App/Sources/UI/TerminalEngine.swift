@@ -212,7 +212,7 @@ final class TerminalController: NSObject, TerminalViewDelegate {
                 self.attachTask = nil
                 if store.phase != .connected { self.phase = .lost }
                 else if (error as? HerdrError)?.kind == "unavailable" {
-                    // Lost keep:true program: the core restarts it; reattach after `restarted` (SPEC §2).
+                    // Lost keep:true program: the core restarts it; reattach after `restarted`.
                     self.phase = .restarting
                 } else { self.phase = .failed((error as? LocalizedError)?.errorDescription ?? "\(error)") }
             }
@@ -271,7 +271,7 @@ final class TerminalController: NSObject, TerminalViewDelegate {
         }
     }
 
-    /// Desktop resized the program: follow it so our next keystroke doesn't snap it back (SPEC §3).
+    /// Desktop resized the program: follow it so our next keystroke doesn't snap it back.
     func recordSizeChanged(cols: Int, rows: Int) {
         guard !fitToPhone, cols > 0, rows > 0, (cols, rows) != gridSize else { return }
         setGrid(cols: cols, rows: rows)

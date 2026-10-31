@@ -1,6 +1,6 @@
 import SwiftUI
 
-// Generated from herdr-app/defaults/programs.json (program identity, SPEC §5).
+// Generated from herdr-app/defaults/programs.json (program identity).
 // Icons live in Assets.xcassets/Programs/prog-<key>.
 
 struct ProgramInfo: Hashable {

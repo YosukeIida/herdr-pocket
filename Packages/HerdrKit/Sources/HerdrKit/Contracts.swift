@@ -18,7 +18,7 @@ public protocol ByteTransport: AnyObject, Sendable {
     func close()
 }
 
-/// The command a transport runs on the box (SPEC.md §1).
+/// The command a transport runs on the box.
 public let herdrConnectCommand = #"sh -c 'p=$(command -v herdr-core) || p=$HOME/.local/bin/herdr-core; [ -x "$p" ] || { echo "herdr-core is not installed here" >&2; exit 127; }; exec "$p" connect'"#
 
 // MARK: Errors
@@ -57,7 +57,7 @@ public struct ExecResult: Sendable, Equatable {
 
 // MARK: Records
 
-/// One terminal record (SPEC.md §5). Raw JSON kept; accessors on top.
+/// One terminal record. Raw JSON kept; accessors on top.
 public struct TerminalRecord: Identifiable, Equatable, Sendable {
     public var raw: JSONValue
     public init(raw: JSONValue) { self.raw = raw }
@@ -80,7 +80,7 @@ public struct TerminalRecord: Identifiable, Equatable, Sendable {
     public var tabID: String? { labels["herdr.tab"].flatMap { $0.isEmpty ? nil : $0 } }
 }
 
-/// What the agents list shows (SPEC.md §5 Attention).
+/// What the agents list shows (Attention).
 public enum Attention: Int, Comparable, Sendable {
     case none = 0, idle = 1, working = 2, done = 3, blocked = 4
     public static func < (a: Attention, b: Attention) -> Bool { a.rawValue < b.rawValue }
@@ -115,7 +115,7 @@ public struct SpaceRef: Identifiable, Hashable, Sendable {
     }
 }
 
-/// The `herdr-app` doc, raw JSON preserved for writes (SPEC.md §5).
+/// The `herdr-app` doc, raw JSON preserved for writes.
 public struct LayoutDoc: Equatable, Sendable {
     public var value: JSONValue
     public var version: UInt64
@@ -124,7 +124,7 @@ public struct LayoutDoc: Equatable, Sendable {
 
 // MARK: Terminal stream
 
-/// One attached terminal channel (SPEC.md §3). Callbacks are delivered on the
+/// One attached terminal channel. Callbacks are delivered on the
 /// main queue, in order. Credit for each DATA payload is returned to the core
 /// automatically after `onData` returns.
 public final class TerminalStream: @unchecked Sendable {

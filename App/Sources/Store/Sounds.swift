@@ -1,6 +1,6 @@
 import AVFoundation
 
-/// The two herdr alert sounds (SPEC §6): "done" and "request". Mixes with
+/// The two herdr alert sounds: "done" and "request". Mixes with
 /// other audio and respects the silent switch (ambient category).
 @MainActor
 enum Sounds {

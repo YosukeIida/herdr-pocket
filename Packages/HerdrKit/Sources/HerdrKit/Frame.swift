@@ -1,6 +1,6 @@
 import Foundation
 
-/// Frame kinds on the framed wire (SPEC.md §1, core `wire.rs`).
+/// Frame kinds on the framed wire (core `wire.rs`).
 public enum FrameKind {
     public static let data: UInt8 = 0
     public static let credit: UInt8 = 1

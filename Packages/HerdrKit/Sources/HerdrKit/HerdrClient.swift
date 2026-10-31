@@ -1,6 +1,6 @@
 import Foundation
 
-/// One framed connection to herdr-core over a `ByteTransport` (SPEC.md §1-4):
+/// One framed connection to herdr-core over a `ByteTransport`:
 /// JSON-RPC on channel 0, terminal and event streams on core-allocated channels.
 ///
 /// Thread model: transport bytes are parsed on whatever thread the transport
@@ -121,7 +121,7 @@ public final class HerdrClient: @unchecked Sendable {
         }
     }
 
-    /// Validates a hello reply (SPEC.md §1 Compatibility checks).
+    /// Validates a hello reply (Compatibility checks).
     public static func check(hello reply: JSONValue) throws -> HelloInfo {
         if !reply["error"].isNull { throw rpcError(reply["error"]) }
         let r = reply["result"]

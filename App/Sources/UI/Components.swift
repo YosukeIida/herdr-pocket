@@ -1,7 +1,7 @@
 import SwiftUI
 import HerdrKit
 
-// MARK: Status marks (SPEC §6)
+// MARK: Status marks
 
 /// Herdr's status mark: spinner (working), "Needs you" pill (blocked),
 /// filled dot (done), hollow ring (idle). `.none` draws nothing.
@@ -272,7 +272,7 @@ extension AppStore {
         return ProgramGuess.key(statusApp: rec.statusApp, argv: rec.argv)
     }
 
-    /// Folder shortened with ~ (SPEC §5 folderName semantics, full path form).
+    /// Folder shortened with ~ (folderName semantics, full path form).
     func tildePath(_ path: String) -> String {
         guard !path.isEmpty else { return "~" }
         if path == home { return "~" }
@@ -281,7 +281,7 @@ extension AppStore {
     }
 }
 
-/// Lightweight program identity used when the store has no answer (SPEC §5 Program identity).
+/// Lightweight program identity used when the store has no answer (Program identity).
 enum ProgramGuess {
     static let shells: Set<String> = ["zsh", "bash", "fish", "sh", "dash", "nu", "pwsh", "powershell", "cmd", "elvish", "xonsh", "tcsh", "csh", "ksh", "ion"]
     static let interpreters: Set<String> = ["node", "bun", "bunx", "deno", "python", "python3", "npx", "pnpm", "yarn", "uv", "uvx", "ruby", "bundle", "env", "sudo", "nice", "time", "watch", "nodemon"]

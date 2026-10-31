@@ -21,8 +21,8 @@ struct ModSheet: Identifiable, Equatable {
     }
 }
 
-/// The app's mod host: owns every running mod copy, answers their native calls
-/// (SPEC §7 routing) and feeds them live data from the AppStore.
+/// The app's mod host: owns every running mod copy, routes and answers their native calls,
+/// and feeds them live data from the AppStore.
 @MainActor
 @Observable
 final class ModHub {
@@ -275,7 +275,7 @@ final class ModHub {
     }
 }
 
-// MARK: - Native calls (SPEC §7)
+// MARK: - Native calls
 
 extension ModHub: ModBridge {
     /// "devhub" (the mods' hard-coded name), the core's own name or the machine label all mean "the box we're on".

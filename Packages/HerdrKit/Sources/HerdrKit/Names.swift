@@ -1,6 +1,6 @@
 import Foundation
 
-/// Display names (SPEC.md §5 Names; herdr-app `model.rs`, `terminal.rs`, agents mod).
+/// Display names (herdr-app `model.rs`, `terminal.rs`, agents mod).
 public enum Names {
     /// A folder as a name: its last part, `~` for home (or ""), `/` for root.
     public static func folderName(_ path: String, home: String = "~") -> String {

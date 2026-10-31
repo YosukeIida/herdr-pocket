@@ -38,8 +38,8 @@ public struct Pushed: Equatable, Sendable {
     }
 }
 
-/// The events channel's state: an exact port of herdr-app `hc.rs` `EventLines`
-/// (SPEC.md §4). Pure value type: feed it DATA payloads, read `terminals`.
+/// The events channel's state: an exact port of herdr-app `hc.rs` `EventLines`.
+/// Pure value type: feed it DATA payloads, read `terminals`.
 public struct EventLines: Sendable {
     private var pending: [UInt8] = []
     /// The last event applied; older ones were in the snapshot.

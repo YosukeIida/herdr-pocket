@@ -5,7 +5,7 @@ import Foundation
 // headless test compiles this file too).
 
 enum ModTheme {
-    /// SPEC §6 Graphite (dark) / Paper (light), plus ansi0...15. The app's
+    /// Graphite (dark) / Paper (light), plus ansi0...15. The app's
     /// HerdrTheme.tokens(dark:) is layered on top when it has values.
     static func fallback(dark: Bool) -> [String: String] {
         var t: [String: String] = dark ? [
@@ -43,7 +43,7 @@ enum ModTheme {
 }
 
 /// The synthetic layout() the mods read: a 268 px sidebar holding one block per
-/// mod (fold = px ≤ 45 per SPEC §7) and a work body with the "big" stack.
+/// mod (fold = px ≤ 45) and a work body with the "big" stack.
 struct ModLayoutModel {
     /// Block id per mod, as in the desktop layout (a mod finds itself by it to
     /// fold). Defaults to the mod's name; Config/mods.txt can name another.

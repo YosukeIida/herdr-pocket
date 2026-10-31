@@ -1,6 +1,6 @@
 import Foundation
 
-// The `herdr-app` layout document (SPEC.md §5): parsing into SpaceRef/TabRef/
+// The `herdr-app` layout document: parsing into SpaceRef/TabRef/
 // PaneRef, and edit recipes applied to the RAW JSON so fields this client
 // doesn't model (sizes, styles, floating blocks, ...) survive the round trip.
 

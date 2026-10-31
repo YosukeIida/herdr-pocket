@@ -1,6 +1,6 @@
 import Foundation
 
-/// Herdr's seen rules (SPEC.md §5 Attention; app `model.rs:437-505`) as a pure,
+/// Herdr's seen rules (app `model.rs:437-505`) as a pure,
 /// persistable value.
 public struct AttentionTracker: Codable, Equatable, Sendable {
     public struct Agent: Codable, Equatable, Sendable {

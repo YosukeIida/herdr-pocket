@@ -28,7 +28,7 @@ enum ConnectionPhase: Equatable {
 struct AgentRow: Identifiable, Hashable {
     var id: String { address }
     var address: String
-    var label: String                  // SPEC §5 Names: agent row label
+    var label: String                  // Names: agent row label
     var program: String?               // "claude", "codex", "shell", ...
     var attention: Attention
     var spaceID: String?
@@ -73,7 +73,7 @@ final class AppStore {
     /// A terminal the UI should open (tapped alert); the navigator clears it.
     var pendingOpen: String?
 
-    /// Attention words and seen state (SPEC §5), persisted per machine.
+    /// Attention words and seen state, persisted per machine.
     private(set) var attentionState = AttentionTracker()
 
     // MARK: Private connection state
@@ -309,7 +309,7 @@ final class AppStore {
 
     // MARK: Terminal streams
 
-    /// Attach for the terminal screen. Size policy SPEC §3: mirror the record's size by default.
+    /// Attach for the terminal screen. Size policy: mirror the record's size by default.
     func attach(_ address: String, cols: Int?, rows: Int?, observe: Bool) async throws -> TerminalStream {
         let c = try connectedClient()
         let rec = terminals[address]
@@ -339,7 +339,7 @@ final class AppStore {
         if attentionState.markSeen([address]) { scheduleAttentionSave() }
     }
 
-    // MARK: Actions (doc writes per SPEC §5 recipes; CAS with one retry)
+    // MARK: Actions (doc-write recipes; CAS with one retry)
 
     /// Starts a terminal (an agent if `argv` is given) in a new tab after the
     /// space's selected one. Returns the terminal address.
@@ -751,7 +751,7 @@ final class AppStore {
         }
     }
 
-    /// `terminal.run` with the herdr labels (SPEC §2): agents run inside the
+    /// `terminal.run` with the herdr labels: agents run inside the
     /// person's shell wrapper so the shell takes over when they exit.
     private func run(_ c: HerdrClient, argv: [String]?, task: String?, cwd: String, space: String, tab: String) async throws -> String {
         var argvOut: [String] = []
