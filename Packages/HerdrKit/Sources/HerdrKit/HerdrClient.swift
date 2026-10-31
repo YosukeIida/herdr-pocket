@@ -226,7 +226,8 @@ public final class HerdrClient: @unchecked Sendable {
         return ExecResult(code: r["code"].int,
                           stdout: Data(base64Encoded: r["stdout"].string ?? "") ?? Data(),
                           stderr: Data(base64Encoded: r["stderr"].string ?? "") ?? Data(),
-                          timedOut: r["timed_out"].bool ?? false)
+                          timedOut: r["timed_out"].bool ?? false,
+                          truncated: r["truncated"].bool ?? false)
     }
 
     public func docGet(_ name: String = "herdr-app") async throws -> LayoutDoc {

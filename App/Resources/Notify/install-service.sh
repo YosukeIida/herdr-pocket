@@ -7,27 +7,34 @@ d="$HOME/.config/herdr-ios"
 script="$d/herdr-notify.py"
 py="$(command -v python3)"
 
+# XML text for a plist <string>.
+xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
 if [ "$(uname)" = Darwin ]; then
   label=dev.herdr.notify
   plist="$HOME/Library/LaunchAgents/$label.plist"
   mkdir -p "$HOME/Library/LaunchAgents"
   # launchd starts jobs with PATH=/usr/bin:/bin:/usr/sbin:/sbin; keep the PATH that found hc and python3 here.
-  cat > "$plist" <<EOF
+  tmp="$plist.new"
+  cat > "$tmp" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>Label</key><string>$label</string>
-  <key>ProgramArguments</key><array><string>$py</string><string>$script</string></array>
-  <key>EnvironmentVariables</key><dict><key>PATH</key><string>$PATH</string></dict>
+  <key>ProgramArguments</key><array><string>$(xml "$py")</string><string>$(xml "$script")</string></array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>$(xml "$PATH")</string></dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>10</integer>
-  <key>StandardOutPath</key><string>$d/notify.log</string>
-  <key>StandardErrorPath</key><string>$d/notify.log</string>
+  <key>StandardOutPath</key><string>$(xml "$d/notify.log")</string>
+  <key>StandardErrorPath</key><string>$(xml "$d/notify.log")</string>
 </dict>
 </plist>
 EOF
+  # A broken plist must not stop the running notifier.
+  plutil -lint -s "$tmp"
+  mv "$tmp" "$plist"
   pkill -f "$script" 2>/dev/null || true
   launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
   launchctl bootstrap "gui/$(id -u)" "$plist"
@@ -39,7 +46,7 @@ Description=Herdr for iOS push notifications
 After=network-online.target
 
 [Service]
-ExecStart=$py %h/.config/herdr-ios/herdr-notify.py
+ExecStart="$py" "%h/.config/herdr-ios/herdr-notify.py"
 Restart=always
 RestartSec=5
 

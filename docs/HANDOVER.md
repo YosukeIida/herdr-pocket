@@ -49,13 +49,13 @@ All five targets are met on the simulator, and Codex chat was added as well. Eve
   `herdr-core connect` stdio open. Not yet confirmed on a device.
 - Files (this repo's first feature, 6c7e200 + 95acd13 after Codex's review,
   `docs/reviews/2026-11-01-files-judgement.md`): `App/Sources/UI/FilesView.swift`, folder button in
-  a space's toolbar. Lists and reads with python3 on the box; reads are capped at 8 MiB on the box
-  (`Frame.maxPayload / 2`), larger files are refused (`shortcut:` in the code; the code-review
-  document's "read in chunks" is not built yet). `testFilesPreviewInQuickLook` opens a PDF, docx,
+  a space's toolbar. Lists and reads with python3 on the box, 4,000,000 bytes per machine.exec (the core
+  keeps 8 MB of stdout); larger files are read in chunks, each checked by size and mtime, up to 256 MiB. `testFilesPreviewInQuickLook` opens a PDF, docx,
   xlsx and png from `build/preview-fixtures/` (gitignored; recreate with textutil, cupsfilter, sips
   and openpyxl via uvx; the png must be opaque; md, html, json, csv, swift, svg, jpg, gif, heic and
   pptx were added by hand). All of them open; Markdown opens in Chat's renderer instead of Quick Look,
-  which shows the raw source. HTML without a viewport and SVG show small (desktop scale, intrinsic size).
+  which shows the raw source. HTML and SVG open in a WKWebView at phone width, with JavaScript off and
+  every non-file load blocked.
 - Chat (1f37e96): Claude Code and Codex. `testChatRendersAndFolds` and `testChatSendGetsReply` pass
   against throwaway terminals (`hc run --bg --name claude-chat-test claude --strict-mcp-config`,
   and `CODEX_HOME=$HOME/.codex-labteam hc run --bg --name codex-chat-test codex`, both in this repo):
@@ -125,6 +125,5 @@ TEST_RUNNER_HERDR_TEST_BLOCKED_TERMINAL=<address> TEST_RUNNER_HERDR_TEST_BLOCKED
 
 - Chat: Codex thread matching would be exact if Codex exposed its thread id to the terminal. If the Chat code turns out weak to extend,
   opencode and Orca's chat are acceptable references (check licenses first).
-- Files: chunked reads above 8 MiB; HTML/SVG scaled to the screen (WKWebView) if that matters.
 - Run on a real iPhone (needs `Config/Local.xcconfig` with a team id).
 - Citadel: close the channel on handshake failure (fork + upstream PR), see `docs/reviews/PENDING.md`.

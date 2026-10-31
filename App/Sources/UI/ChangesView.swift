@@ -12,11 +12,14 @@ struct ChangesSheet: View {
     struct Change: Hashable, Identifiable {
         var code: String   // porcelain XY, e.g. " M", "A ", "??"
         var path: String
+        var from: String?  // a rename's or copy's source
         var id: String { path }
         var untracked: Bool { code == "??" }
     }
 
     @State private var changes: [Change]?
+    @State private var root = ""
+    @State private var hasHead = true
     @State private var error: String?
 
     var body: some View {
@@ -39,18 +42,33 @@ struct ChangesSheet: View {
             .overlay { if changes == nil && error == nil { ProgressView() } }
             .navigationTitle("Changes · \(title)")
             .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: Change.self) { c in DiffView(folder: folder, change: c) }
+            .navigationDestination(for: Change.self) { c in DiffView(root: root, hasHead: hasHead, change: c) }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close", systemImage: "xmark") { dismiss() } } }
             .task { await load() }
             .refreshable { await load() }
         }
     }
 
+    /// The space folder as an absolute path: argv reaches git without a shell, so "~" is not expanded.
+    private var absoluteFolder: String {
+        if folder.isEmpty || folder == "~" { return store.home }
+        if folder.hasPrefix("~/") { return store.home + folder.dropFirst(1) }
+        return folder
+    }
+
     private func load() async {
         do {
-            let r = try await store.exec(argv: ["git", "-C", folder.isEmpty ? "." : folder, "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+            // Porcelain paths are relative to the repo root, so status and every diff run there.
+            let top = try await store.exec(argv: ["git", "-C", absoluteFolder, "rev-parse", "--show-toplevel"], cwd: nil, on: nil, timeout: 20, input: nil)
+            guard top.code == 0 else { error = DiffView.failure(top, "\(title) is not in a git repository."); return }
+            let dir = String(decoding: top.stdout, as: UTF8.self).trimmingCharacters(in: .newlines)
+            let head = try await store.exec(argv: ["git", "-C", dir, "rev-parse", "--verify", "-q", "HEAD"], cwd: nil, on: nil, timeout: 20, input: nil)
+            let r = try await store.exec(argv: ["git", "-C", dir, "status", "--porcelain=v1", "-z", "--untracked-files=all"],
                                          cwd: nil, on: nil, timeout: 20, input: nil)
-            guard r.code == 0 else { error = DiffView.failure(r, "Couldn't read git status in \(folder)"); return }
+            guard r.code == 0 else { error = DiffView.failure(r, "Couldn't read git status in \(dir)"); return }
+            guard !r.truncated else { error = "Too many changes to list here."; return }
+            root = dir
+            hasHead = head.code == 0
             changes = Self.parse(r.stdout)
             error = nil
         } catch {
@@ -66,8 +84,9 @@ struct ChangesSheet: View {
             let f = fields[i]; i += 1
             guard f.count > 3 else { continue }
             let code = String(f.prefix(2))
-            result.append(Change(code: code, path: String(f.dropFirst(3))))
-            if code.contains("R") || code.contains("C") { i += 1 }
+            let moved = code.contains("R") || code.contains("C")
+            result.append(Change(code: code, path: String(f.dropFirst(3)), from: moved && i < fields.count ? fields[i] : nil))
+            if moved { i += 1 }
         }
         return result
     }
@@ -76,7 +95,8 @@ struct ChangesSheet: View {
 /// One file's diff against HEAD (or against nothing for an untracked file), coloured by line.
 struct DiffView: View {
     @Environment(AppStore.self) private var store
-    var folder: String
+    var root: String
+    var hasHead: Bool
     var change: ChangesSheet.Change
 
     @State private var lines: [Substring]?
@@ -113,16 +133,19 @@ struct DiffView: View {
     }
 
     private func load() async {
-        let dir = folder.isEmpty ? "." : folder
+        let git = ["git", "-C", root, "--literal-pathspecs", "--no-pager", "diff", "--no-color", "--no-ext-diff", "-M"]
         // --no-index exits 1 when the files differ, which for an untracked file is always.
+        // Before the first commit there is no HEAD; the index holds what that commit will contain.
         let argv = change.untracked
-            ? ["git", "-C", dir, "--no-pager", "diff", "--no-color", "--no-ext-diff", "--no-index", "--", "/dev/null", change.path]
-            : ["git", "-C", dir, "--no-pager", "diff", "--no-color", "--no-ext-diff", "HEAD", "--", change.path]
+            ? git + ["--no-index", "--", "/dev/null", change.path]
+            : git + [hasHead ? "HEAD" : "--cached", "--"] + [change.from, change.path].compactMap { $0 }
         do {
             let r = try await store.exec(argv: argv, cwd: nil, on: nil, timeout: 30, input: nil)
             guard r.code == 0 || (change.untracked && r.code == 1) else { error = Self.failure(r, "Couldn't diff \(change.path)"); return }
             let text = String(decoding: r.stdout, as: UTF8.self)
-            lines = text.isEmpty ? ["No textual changes (mode or staging only)."] : text.split(separator: "\n", omittingEmptySubsequences: false)
+            var out: [Substring] = text.isEmpty ? ["No textual changes (mode or staging only)."] : text.split(separator: "\n", omittingEmptySubsequences: false)
+            if r.truncated { out.append("… the diff is longer than 8 MB and was cut off here.") }
+            lines = out
         } catch {
             self.error = Self.message(error)
         }
@@ -130,7 +153,7 @@ struct DiffView: View {
 
     static func color(_ l: Substring) -> Color {
         if l.hasPrefix("@@") { return HC.working }
-        if l.hasPrefix("+++") || l.hasPrefix("---") || l.hasPrefix("diff ") || l.hasPrefix("index ") { return HC.dim }
+        if l.hasPrefix("+++") || l.hasPrefix("---") || l.hasPrefix("diff ") || l.hasPrefix("index ") || l.hasPrefix("rename ") || l.hasPrefix("similarity ") { return HC.dim }
         if l.hasPrefix("+") { return HC.done }
         if l.hasPrefix("-") { return HC.blocked }
         return HC.fg

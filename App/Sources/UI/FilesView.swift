@@ -32,9 +32,9 @@ struct FilesView: View {
 
     struct MarkdownDoc: Identifiable { var name: String; var text: String; var id: String { name } }
 
-    /// The most read in one machine.exec. The reply is base64 (4/3) inside JSON in one
-    /// frame of `Frame.maxPayload` (16 MiB); half of it leaves room for the envelope and stderr.
-    static let chunkBytes = Frame.maxPayload / 2
+    /// The most read in one machine.exec: the core keeps the first "8 MB" of stdout (read as 8,000,000 bytes),
+    /// and the reply is base64 inside one `Frame.maxPayload` (16 MiB) frame, so half of 8 MB is safe for both.
+    static let chunkBytes = 4_000_000
     /// The largest file previewed; the copy lives on the phone while Quick Look shows it.
     static let maxBytes = 256 << 20
 
@@ -56,7 +56,8 @@ struct FilesView: View {
     """
 
     // Writes "<size> <mtime_ns>\n", then at most argv[3] bytes of the regular file argv[1] from offset argv[2];
-    // exits 1 when it is not a regular file. O_NONBLOCK so a FIFO listed as a file cannot hang the read.
+    // exits 1 when it is not a regular file, 4 when its size or mtime changed during this read.
+    // O_NONBLOCK so a FIFO listed as a file cannot hang the read.
     static let readScript = """
     import os, stat, sys
     off, limit = int(sys.argv[2]), int(sys.argv[3])
@@ -71,6 +72,9 @@ struct FilesView: View {
         if not chunk:
             break
         data += chunk
+    after = os.fstat(fd)
+    if (after.st_size, after.st_mtime_ns) != (st.st_size, st.st_mtime_ns):
+        sys.exit(4)
     sys.stdout.buffer.write(b"%d %d\\n" % (st.st_size, st.st_mtime_ns) + data)
     """
 
@@ -238,14 +242,15 @@ struct FilesView: View {
     }
 
     /// Reads the file `chunkBytes` at a time. Nil, with `error` set unless cancelled, when a read fails,
-    /// the file changes size or mtime between chunks, or it grows past `maxBytes`.
+    /// the file changes size or mtime during or between chunks, a chunk comes back short, or it is over `maxBytes`.
     private func read(_ path: String, _ name: String) async throws -> Data? {
         var data = Data(), stamp: String?
         while true {
             let r = try await store.exec(argv: ["python3", "-c", Self.readScript, path, String(data.count), String(Self.chunkBytes)],
                                          cwd: nil, on: nil, timeout: 60, input: nil)
             guard !Task.isCancelled else { return nil }
-            guard r.code == 0, !r.timedOut, let nl = r.stdout.firstIndex(of: 10) else {
+            guard r.code != 4 else { error = "\(name) changed while it was being read."; return nil }
+            guard r.code == 0, !r.timedOut, !r.truncated, let nl = r.stdout.firstIndex(of: 10) else {
                 error = Self.failure(r, "Couldn't read \(name)"); return nil
             }
             let head = String(decoding: r.stdout[r.stdout.startIndex..<nl], as: UTF8.self)
@@ -254,9 +259,10 @@ struct FilesView: View {
             guard size <= Self.maxBytes else { error = Self.tooLarge(name, size); return nil }
             stamp = head
             let body = r.stdout[(nl + 1)...]
+            guard body.count == min(Self.chunkBytes, max(size - data.count, 0)) else { error = "\(name) changed while it was being read."; return nil }
             data.append(body)
             if size > Self.chunkBytes { progress = "\(data.count * 100 / size)%" }
-            if body.count < Self.chunkBytes || data.count >= size { return data }
+            if data.count >= size { return data }
         }
     }
 
@@ -270,15 +276,35 @@ struct FilesView: View {
 private struct WebPreview: UIViewRepresentable {
     let url: URL
 
+    /// Blocks every load that is not a local file, so a page from the box can't reach the network.
+    static let localOnly = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^file:"},"action":{"type":"ignore-previous-rules"}}]"#
+
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         config.defaultWebpagePreferences.allowsContentJavaScript = false
+        config.websiteDataStore = .nonPersistent()
         let view = WKWebView(frame: .zero, configuration: config)
-        view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        view.navigationDelegate = context.coordinator
+        let url = url
+        Task { @MainActor in
+            // Nothing loads until the block list is in place.
+            guard let rules = try? await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "herdr-local-only", encodedContentRuleList: Self.localOnly) else { return }
+            view.configuration.userContentController.add(rules)
+            view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        }
         return view
     }
 
     func updateUIView(_ view: WKWebView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    /// Links and redirects stay inside local files.
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
+            action.request.url?.isFileURL == true ? .allow : .cancel
+        }
+    }
 }
 
 /// The Files sheet for one space: its own stack so folders push inside the sheet.

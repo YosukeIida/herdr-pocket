@@ -46,8 +46,9 @@ public struct ExecResult: Sendable, Equatable {
     public var stdout: Data
     public var stderr: Data
     public var timedOut: Bool
-    public init(code: Int?, stdout: Data, stderr: Data, timedOut: Bool) {
-        self.code = code; self.stdout = stdout; self.stderr = stderr; self.timedOut = timedOut
+    public var truncated: Bool   // it wrote more than the core kept (stdout 8 MB, stderr 1 MB)
+    public init(code: Int?, stdout: Data, stderr: Data, timedOut: Bool, truncated: Bool = false) {
+        self.code = code; self.stdout = stdout; self.stderr = stderr; self.timedOut = timedOut; self.truncated = truncated
     }
 }
 

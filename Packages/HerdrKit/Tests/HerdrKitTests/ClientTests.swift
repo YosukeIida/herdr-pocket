@@ -194,6 +194,16 @@ final class ClientTests: XCTestCase {
         XCTAssertEqual(res, ExecResult(code: 0, stdout: Data("hi\n".utf8), stderr: Data(), timedOut: false))
     }
 
+    func testExecReportsTruncatedOutput() async throws {
+        let (c, t) = try await connected()
+        async let r = c.exec(argv: ["yes"], on: nil, timeout: 5)
+        let fr = try await t.waitFor { $0.contains { $0.channel == 0 } }
+        let msg = try JSONValue.parse(fr.first { $0.channel == 0 }!.payload)
+        t.reply(msg["id"].int!, ["code": 0, "stdout": "eQ==", "stderr": "", "timed_out": false, "truncated": true])
+        let res = try await r
+        XCTAssertTrue(res.truncated)
+    }
+
     func testSubscribeCreditsAndUpdates() async throws {
         let (c, t) = try await connected()
         async let s = c.subscribe(coalesce: 0)
