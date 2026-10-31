@@ -26,7 +26,7 @@ anything on a real iPhone, pushing to origin.
 
 ## State (2026-11-01, night)
 
-All five targets are met on the simulator. Commits are local on `main` (12 ahead of origin); nothing is pushed.
+All five targets are met on the simulator. Commits are local on `main`; nothing is pushed.
 
 - Conventions: `AGENTS.md`/`AGENTS.ja.md`, the three 2026-11-01 documents in English with `.ja.md`
   translations, devshell (`nix develop ./nix` gives XcodeGen 2.44.1 and bun 1.3.13; Swift comes
