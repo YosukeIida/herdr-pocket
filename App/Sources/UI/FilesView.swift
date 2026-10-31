@@ -45,7 +45,7 @@ struct FilesView: View {
     print(json.dumps({"dir": d, "entries": out, "skipped": skipped}))
     """
 
-    // Writes at most argv[2] bytes of the regular file argv[1]; exit 3 when it is larger or not a
+    // Writes at most argv[2] bytes of the regular file argv[1]; exits 3 when it is larger, 1 when it is not a
     // regular file. O_NONBLOCK so a FIFO listed as a file cannot hang the read.
     static let readScript = """
     import os, stat, sys
