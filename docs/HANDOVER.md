@@ -17,16 +17,16 @@ re-checking it. Concretely:
    - Citadel is pinned to an exact version; the tracked `.pyc` is gone.
 3. The scripts that run unsandboxed at build time have been read.
 4. The app builds and runs in the iOS simulator and connects to this Mac's herdr-core over SSH
-   (simulator → 127.0.0.1:22 → `herdr-core connect`), which also answers the spike's open
+   (simulator → the Mac's sshd → `herdr-core connect`), which also answers the spike's open
    question about Citadel keeping the `hc connect` stdio alive (on the simulator, not a device).
 5. One missing feature: a file tree per space with Quick Look preview (PDF, docx, xlsx, images).
 
-Out of scope tonight: Codex chat, the launchd notifier, push (no APNs on the simulator),
-anything on a real iPhone, pushing to origin.
+Out of scope tonight: the launchd notifier, push (no APNs on the simulator),
+anything on a real iPhone. (Codex chat and pushing were allowed later in the session.)
 
 ## State (2026-11-01, night)
 
-All five targets are met on the simulator. Commits are local on `main`; nothing is pushed.
+All five targets are met on the simulator, and Codex chat was added as well. Everything is pushed to `origin/main`.
 
 - Conventions: `AGENTS.md`/`AGENTS.ja.md`, the three 2026-11-01 documents in English with `.ja.md`
   translations, devshell (`nix develop ./nix` gives XcodeGen 2.44.1 and bun 1.3.13; Swift comes
