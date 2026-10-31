@@ -1,9 +1,5 @@
 import Foundation
 
-// CONTRACT FILE. Public signatures here are shared by the app's UI, store and
-// mod host, which are written in parallel. Implement the bodies (here or in
-// other files of HerdrKit); add API freely, but do not rename or remove these.
-
 // MARK: Transport
 
 /// Bytes to and from one `herdr-core connect` process: an SSH exec channel on

@@ -2,10 +2,6 @@ import SwiftUI
 import UIKit
 import HerdrKit
 
-// CONTRACT FILE (owned by the core/store builder). UI and Mods are written
-// against these signatures in parallel: implement the bodies, add API freely,
-// but do not rename or remove anything here.
-
 /// Where to connect. Persisted in UserDefaults (the key lives in the Keychain).
 struct MachineConfig: Codable, Hashable, Identifiable {
     var id: UUID = UUID()

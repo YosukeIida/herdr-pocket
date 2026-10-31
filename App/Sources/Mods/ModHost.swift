@@ -1,6 +1,5 @@
 import SwiftUI
 
-// CONTRACT (owned by the mod-host builder).
 struct ModInfo: Identifiable, Hashable {
     var id: String { name }
     var name: String        // folder name, e.g. "devhub"
