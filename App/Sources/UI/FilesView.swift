@@ -3,7 +3,7 @@ import QuickLook
 import HerdrKit
 
 /// A space's folder on the box: browse it and open files in Quick Look
-/// (PDF, Office, iWork, images, text). Lists with the box's python3, like Chat.
+/// (PDF, Office, images, text). Lists and reads with the box's python3, like Chat.
 struct FilesView: View {
     @Environment(AppStore.self) private var store
     var path: String
@@ -18,26 +18,50 @@ struct FilesView: View {
 
     @State private var dir: String?
     @State private var entries: [Entry] = []
+    @State private var skipped = 0
     @State private var error: String?
     @State private var opening: String?
+    @State private var fetch: Task<Void, Never>?
     @State private var preview: URL?
 
-    /// The largest file fetched in one machine.exec: its 16 MiB frame carries base64 (4/3) plus JSON.
-    static let maxBytes = 12 << 20
+    /// The largest file read in one machine.exec. The reply is base64 (4/3) inside JSON in one
+    /// frame of `Frame.maxPayload` (16 MiB); half of it leaves room for the envelope and stderr.
+    static let maxBytes = Frame.maxPayload / 2
 
-    // Prints {"dir": <absolute path>, "entries": [[name, is_dir, size], ...]}; "~" expands on the box.
+    // Prints {"dir", "entries": [[name, is_dir, size]], "skipped"}; "~" expands on the box.
+    // Names that are not valid UTF-8 are skipped: JSON could not carry them back intact.
     static let listScript = """
     import json, os, sys
     d = os.path.realpath(os.path.expanduser(sys.argv[1]))
-    out = []
+    out, skipped = [], 0
     with os.scandir(d) as it:
         for e in it:
             try:
+                e.name.encode("utf-8")
                 isdir = e.is_dir()
                 out.append([e.name, isdir, 0 if isdir else e.stat().st_size])
-            except OSError:
-                pass
-    print(json.dumps({"dir": d, "entries": out}))
+            except (OSError, UnicodeEncodeError):
+                skipped += 1
+    print(json.dumps({"dir": d, "entries": out, "skipped": skipped}))
+    """
+
+    // Writes at most argv[2] bytes of the regular file argv[1]; exit 3 when it is larger or not a
+    // regular file. O_NONBLOCK so a FIFO listed as a file cannot hang the read.
+    static let readScript = """
+    import os, stat, sys
+    limit = int(sys.argv[2])
+    fd = os.open(sys.argv[1], os.O_RDONLY | os.O_NONBLOCK)
+    if not stat.S_ISREG(os.fstat(fd).st_mode):
+        sys.exit("not a regular file")
+    data = b""
+    while len(data) <= limit:
+        chunk = os.read(fd, min(1 << 20, limit + 1 - len(data)))
+        if not chunk:
+            break
+        data += chunk
+    if len(data) > limit:
+        sys.stderr.write("larger than %d bytes" % limit); sys.exit(3)
+    sys.stdout.buffer.write(data)
     """
 
     var body: some View {
@@ -49,9 +73,13 @@ struct FilesView: View {
                 if e.isDir, let dir {
                     NavigationLink(value: dir + "/" + e.name) { row(e) }
                 } else {
-                    Button { Task { await open(e) } } label: { row(e) }
+                    Button { open(e) } label: { row(e) }
                         .disabled(opening != nil)
                 }
+            }
+            if skipped > 0 {
+                Text("\(skipped) item(s) with names that can't be shown are hidden.")
+                    .font(HF.ui(13)).foregroundStyle(HC.dim)
             }
         }
         .overlay { if dir == nil && error == nil { ProgressView() } }
@@ -60,6 +88,9 @@ struct FilesView: View {
         .task { await load() }
         .refreshable { await load() }
         .quickLookPreview($preview)
+        .onChange(of: preview) { old, new in if new == nil, let old { Self.discard(old) } }
+        // Why not discard the preview here as well: presenting Quick Look can fire onDisappear while it shows the file.
+        .onDisappear { fetch?.cancel(); fetch = nil; opening = nil }
     }
 
     private func row(_ e: Entry) -> some View {
@@ -79,23 +110,33 @@ struct FilesView: View {
         .accessibilityLabel(e.name)
     }
 
+    private static func failure(_ r: ExecResult, _ fallback: String) -> String {
+        let why = String(decoding: r.stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return why.isEmpty ? fallback : String(why.suffix(300))
+    }
+
     private func load() async {
         do {
             let r = try await store.exec(argv: ["python3", "-c", Self.listScript, path], cwd: nil, on: nil, timeout: 20, input: nil)
             guard r.code == 0, let v = try? JSONValue.parse(r.stdout), let d = v["dir"].string else {
-                let why = String(decoding: r.stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-                error = why.isEmpty ? "Couldn't list \(path)" : String(why.suffix(300))
+                error = Self.failure(r, "Couldn't list \(path)")
                 return
             }
             entries = Self.sorted((v["entries"].array ?? []).compactMap { a in
                 guard let n = a[0].string else { return nil }
                 return Entry(name: n, isDir: a[1].bool ?? false, size: a[2].int ?? 0)
             })
+            skipped = v["skipped"].int ?? 0
             dir = d
             error = nil
         } catch {
-            self.error = error.localizedDescription
+            self.error = Self.message(error)
         }
+    }
+
+    /// herdr-core answers a missing program with kind "spawn_failed" (checked against 0.1.15).
+    private static func message(_ error: Error) -> String {
+        (error as? HerdrError)?.kind == "spawn_failed" ? "Files needs python3 on the box." : error.localizedDescription
     }
 
     /// Folders first, then files; dotfiles after the rest; each by name as Finder sorts.
@@ -108,31 +149,39 @@ struct FilesView: View {
         }
     }
 
-    private func open(_ e: Entry) async {
-        guard let dir else { return }
-        // shortcut: files over 12 MiB are refused; read them in ranges (dd/tail -c) when large files matter.
+    private func open(_ e: Entry) {
+        guard let dir, opening == nil else { return }
+        // shortcut: files over maxBytes (8 MiB) are refused; read them in ranges when large files matter.
         guard e.size <= Self.maxBytes else {
-            error = "\(e.name) is \(e.size.formatted(.byteCount(style: .file))); files over 12 MB can't be previewed yet."
+            error = "\(e.name) is \(e.size.formatted(.byteCount(style: .file))); files over \(Self.maxBytes.formatted(.byteCount(style: .file))) can't be previewed yet."
             return
         }
         opening = e.name
-        defer { opening = nil }
-        do {
-            let r = try await store.exec(argv: ["cat", "--", dir + "/" + e.name], cwd: nil, on: nil, timeout: 60, input: nil)
-            guard r.code == 0, !r.timedOut, r.stdout.count == e.size else {
-                error = "Couldn't read \(e.name)" + (r.stdout.count != e.size ? " (got \(r.stdout.count) of \(e.size) bytes)" : "")
-                return
+        fetch = Task {
+            defer { if !Task.isCancelled { opening = nil; fetch = nil } }
+            do {
+                let r = try await store.exec(argv: ["python3", "-c", Self.readScript, dir + "/" + e.name, String(Self.maxBytes)],
+                                             cwd: nil, on: nil, timeout: 60, input: nil)
+                guard !Task.isCancelled else { return }
+                guard r.code == 0, !r.timedOut else { error = Self.failure(r, "Couldn't read \(e.name)"); return }
+                // A folder per preview, so a slow earlier fetch can never replace or delete this one.
+                let folder = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("preview", isDirectory: true)
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                let url = folder.appendingPathComponent(e.name)
+                try r.stdout.write(to: url, options: .completeFileProtection)
+                error = nil
+                preview = url
+            } catch {
+                if !Task.isCancelled { self.error = Self.message(error) }
             }
-            let folder = FileManager.default.temporaryDirectory.appendingPathComponent("preview", isDirectory: true)
-            try? FileManager.default.removeItem(at: folder)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let url = folder.appendingPathComponent(e.name)
-            try r.stdout.write(to: url, options: .completeFileProtection)
-            error = nil
-            preview = url
-        } catch {
-            self.error = error.localizedDescription
         }
+    }
+
+    /// Deletes a closed preview's downloaded copy (its own folder).
+    private static func discard(_ url: URL) {
+        try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
     }
 }
 
@@ -154,5 +203,7 @@ struct FilesSheet: View {
                     }
                 }
         }
+        // Copies left by a preview that was never closed (the app quit) go when Files opens again.
+        .onAppear { try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("preview")) }
     }
 }
