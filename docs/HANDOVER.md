@@ -42,7 +42,7 @@ All five targets are met on the simulator. Commits are local on `main`; nothing 
   (`CODE_SIGNING_ALLOWED=NO`) cannot use the Keychain (error -34018). Needs Xcode's Metal
   Toolchain (installed tonight with `xcodebuild -downloadComponent MetalToolchain`).
 - Connection: the Mac's sshd admits only Tailscale addresses (`Match Address *,!100.64.0.0/10`
-  → `DenyUsers *`), so the simulator connects to the Mac's Tailscale IP `<Tailscale IP>`, not
+  → `DenyUsers *`), so the simulator connects to the Mac's Tailscale IP (in `docs/private/machine.md`), not
   127.0.0.1. `HerdrUITests.testFirstConnectAsksForHostKey` passes: fingerprint shown before login,
   equal to `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub`, home with live agents only after
   approval. This answers the spike's open question for the simulator: Citadel keeps the
@@ -62,8 +62,8 @@ All five targets are met on the simulator. Commits are local on `main`; nothing 
 
 - `~/.ssh/authorized_keys`: the last line, comment `herdr-pocket-simulator` (the key used by the UI
   tests). Its private key is `docs/private/sim_key` (gitignored); delete both together.
-- `~/.ssh/known_hosts`: entries for `127.0.0.1` and `<Tailscale IP>` added while testing
-  (`ssh-keygen -R 127.0.0.1`, `ssh-keygen -R <Tailscale IP>`).
+- `~/.ssh/known_hosts`: entries for `127.0.0.1` and the Tailscale IP added while testing
+  (`ssh-keygen -R 127.0.0.1`, `ssh-keygen -R $TS_IP`).
 - Simulator iPhone 18 Pro: the app, its Keychain items and the saved machine
   (`xcrun simctl uninstall <udid> dev.herdr.ios.unofficial`, `xcrun simctl keychain <udid> reset`).
 - Xcode's Metal Toolchain component (needed to build; keep it).
@@ -77,10 +77,11 @@ From the repo root, after `nix develop ./nix -c xcodegen generate`. `D` is the s
 B=(-project Herdr.xcodeproj -scheme Herdr -destination "platform=iOS Simulator,id=$D" -derivedDataPath build/dd
    -skipPackagePluginValidation CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM=)
 export TEST_RUNNER_HERDR_DEBUG_KEY_PATH=$PWD/docs/private/sim_key
+export TS_IP=...   # from docs/private/machine.md
 
 # First connect (fresh install and keychain first)
 xcrun simctl uninstall $D dev.herdr.ios.unofficial; xcrun simctl keychain $D reset
-TEST_RUNNER_HERDR_TEST_HOST=<Tailscale IP> TEST_RUNNER_HERDR_TEST_USER=yosuke \
+TEST_RUNNER_HERDR_TEST_HOST=$TS_IP TEST_RUNNER_HERDR_TEST_USER=yosuke \
 TEST_RUNNER_HERDR_TEST_HOST_FP=$(ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub | awk '{print $2}') \
   xcodebuild test "${B[@]}" -only-testing:HerdrUITests/HerdrUITests/testFirstConnectAsksForHostKey
 
