@@ -43,7 +43,6 @@ struct ChatView: View {
         .onDisappear { model.stop() }
         .onChange(of: rec?.statusWord) { _, _ in model.nudge() }
         .onChange(of: rec?.turn) { _, _ in model.nudge() }
-        .onChange(of: rec?.title) { _, _ in model.nudge() }
         .onChange(of: store.phase) { _, p in if p == .connected { model.nudge() } }
         .onChange(of: scenePhase) { _, p in if p == .active { model.nudge() } }
     }

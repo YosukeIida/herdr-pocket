@@ -59,6 +59,7 @@ final class ChatModel {
     private var offset: Int64 = -1
     private var loop: Task<Void, Never>?
     private var wake: CheckedContinuation<Void, Never>?
+    private var sleeper: Task<Void, Never>?
     private weak var store: AppStore?
 
     init(address: String) { self.address = address }
@@ -80,10 +81,11 @@ final class ChatModel {
 
     func stop() {
         loop?.cancel(); loop = nil
+        sleeper?.cancel(); sleeper = nil
         wake?.resume(); wake = nil
     }
 
-    /// Something changed (status, turn, title): read now instead of waiting.
+    /// Something changed (status, turn): read now instead of waiting.
     func nudge() { wake?.resume(); wake = nil }
 
     private func pause() async {
@@ -91,9 +93,12 @@ final class ChatModel {
         let delay: Duration = busy ? .milliseconds(1500) : .seconds(6)
         await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
             wake = c
-            Task { [weak self] in
+            // Cancelled so an earlier pause's timer can never end this one early.
+            sleeper?.cancel()
+            sleeper = Task { [weak self] in
                 try? await Task.sleep(for: delay)
-                self?.wake?.resume(); self?.wake = nil
+                guard !Task.isCancelled else { return }
+                self?.nudge()
             }
         }
     }
