@@ -127,8 +127,10 @@ if fresh and off > 0:
     off += nl + 1 if nl >= 0 else 0
 start = off if fresh else -1
 end = data.rfind(b'\n')
+read = len(data)
 data = data[:end + 1] if end >= 0 else b''
-nxt = off + len(data)
+# Waiting for the newline of a record longer than MAXREAD would reread the same window forever.
+nxt = off + (read if end < 0 and read >= MAXREAD else len(data))
 
 for raw in data.split(b'\n'):
     if not raw or (b'"type":"user"' not in raw and b'"type":"assistant"' not in raw and b'"subtype":"turn_duration"' not in raw and b'"subtype":"compact_boundary"' not in raw):

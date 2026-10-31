@@ -65,6 +65,9 @@ All five targets are met on the simulator. Commits are local on `main`; nothing 
 - Blocked dialogs (BlockedCard): `testBlockedDialogButtons` passes. A throwaway Claude Code was asked
   to use AskUserQuestion; tapping "Teal" in Chat answered it and the agent replied TEAL. Fixed on the
   way: options separated by description lines were not read (only the last one was).
+  After the review (`docs/reviews/2026-11-01-codex-chat-judgement.md`) the card needs the menu cursor
+  and option 1, nested `codex exec` rollouts are ignored, and oversized transcript records are skipped;
+  the blocked (Amber), Codex send and read, and Files tests pass again.
 - Transcript reads while a Claude agent works: 7 runs of the read script in a 150 s window (sampled
   with `pgrep -f "import sys, os, json, glob, re"`; macOS python3 re-execs as `Python`, so
   `pgrep -f "python3 -c"` sees none). Before 407eccd every title change (about every 0.1 s) woke it.

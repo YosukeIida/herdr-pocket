@@ -500,6 +500,7 @@ private struct BlockedCard: View {
 
     /// The bottom-most "❯ 1. Yes" / "  2. No" options, counting down to 1, and the text above them.
     /// Options may be separated by description lines and rules (Claude Code's AskUserQuestion).
+    /// Nil unless one option carries the cursor (❯ or ›) and the list counts down to 1.
     static func parse(_ screen: String) -> Dialog? {
         let lines = screen.components(separatedBy: "\n").map { l in
             l.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "│┃|"))
@@ -508,18 +509,20 @@ private struct BlockedCard: View {
         let rx = /^(?:[❯›>]\s*)?(\d)[.)]\s+(.+)$/
         var options: [(String, String)] = []
         var firstOption = -1
-        var gap = 0
+        var gap = 0, marked = false
         for i in stride(from: lines.count - 1, through: 0, by: -1) {
             if let m = lines[i].wholeMatch(of: rx), let n = Int(m.1),
                options.isEmpty || n == Int(options[0].0)! - 1 {
                 options.insert((String(m.1), String(m.2)), at: 0); firstOption = i; gap = 0
+                if lines[i].hasPrefix("❯") || lines[i].hasPrefix("›") { marked = true }
                 if n == 1 { break }
             } else if !options.isEmpty {
                 gap += 1
                 if gap > 3 { break }
             }
         }
-        guard !options.isEmpty, firstOption > 0 else { return nil }
+        // A numbered list the agent printed is not a menu: a live menu has a cursor and starts at 1.
+        guard marked, options.first?.0 == "1", firstOption > 0 else { return nil }
         var question: [String] = []
         var i = firstOption - 1
         while i >= 0, question.count < 3 {

@@ -53,7 +53,8 @@ def meta(path):
         return {}
 
 rollouts = set(p for p in open_paths(tree(pid) if pid else []) if re.search(r'/sessions/.+/rollout-[^/]+\.jsonl$', p))
-rollouts = [p for p in rollouts if meta(p).get('thread_source', 'user') == 'user']
+# A nested `codex exec` run by the agent writes its own user rollout; it is not this conversation.
+rollouts = [p for p in rollouts if meta(p).get('thread_source', 'user') == 'user' and meta(p).get('source') != 'exec']
 
 def by_title():
     # A Codex on the shared app-server holds no rollout itself; its terminal title is
@@ -116,8 +117,10 @@ if fresh and off > 0:
     off += nl + 1 if nl >= 0 else 0
 start = off if fresh else -1
 end = data.rfind(b'\n')
+read = len(data)
 data = data[:end + 1] if end >= 0 else b''
-nxt = off + len(data)
+# Waiting for the newline of a record longer than MAXREAD would reread the same window forever.
+nxt = off + (read if end < 0 and read >= MAXREAD else len(data))
 
 for raw in data.split(b'\n'):
     if not raw or (b'"item_completed"' not in raw and b'"task_complete"' not in raw): continue
