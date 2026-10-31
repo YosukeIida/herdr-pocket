@@ -107,7 +107,7 @@ final class CitadelTransport: ByteTransport, @unchecked Sendable {
 
     /// SSH failures in words a person can act on.
     static func friendly(_ error: Error, host: String, user: String) -> Error {
-        if error is HostKeys.Mismatch { return error }
+        if error is HostKeys.Mismatch || error is HostKeys.Unknown { return error }
         if let e = error as? SSHClientError, case .allAuthenticationOptionsFailed = e {
             return HerdrError(code: -1, kind: "auth", message: "\(host) didn't accept the login for \(user)",
                               hint: "add this app's public key to ~/.ssh/authorized_keys, or use a password")

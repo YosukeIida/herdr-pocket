@@ -3,10 +3,8 @@ import Crypto
 import NIOCore
 import NIOSSH
 
-/// Trust-on-first-use host keys, pinned per host:port in UserDefaults.
+/// Host keys pinned per host:port in the Keychain, after the person approves the first one.
 enum HostKeys {
-    private static let prefix = "hostkey."
-
     struct Mismatch: LocalizedError {
         var host: String
         var expected: String
@@ -16,21 +14,28 @@ enum HostKeys {
         }
     }
 
+    /// A host seen for the first time. Nothing is pinned and no credentials were sent yet.
+    struct Unknown: LocalizedError, Equatable {
+        var host: String
+        var port: Int
+        var line: String
+        var fingerprint: String { HostKeys.fingerprint(line) }
+        var errorDescription: String? {
+            "First connection to \(host). Check its host key before trusting it: \(fingerprint)"
+        }
+    }
+
     /// The pinned key's fingerprint, for display.
     static func pinnedFingerprint(host: String, port: Int) -> String? {
         pinned(host: host, port: port).map(fingerprint)
     }
 
-    static func pinned(host: String, port: Int) -> String? {
-        UserDefaults.standard.string(forKey: prefix + "\(host):\(port)")
-    }
+    static func pinned(host: String, port: Int) -> String? { KeyStore.hostKey("\(host):\(port)") }
 
-    static func forget(host: String, port: Int) {
-        UserDefaults.standard.removeObject(forKey: prefix + "\(host):\(port)")
-    }
+    static func forget(host: String, port: Int) { try? KeyStore.setHostKey(nil, for: "\(host):\(port)") }
 
-    static func pin(_ line: String, host: String, port: Int) {
-        UserDefaults.standard.set(line, forKey: prefix + "\(host):\(port)")
+    static func pin(_ line: String, host: String, port: Int) throws {
+        try KeyStore.setHostKey(line, for: "\(host):\(port)")
     }
 
     /// `SHA256:<base64>` like ssh-keygen -l.
@@ -41,7 +46,8 @@ enum HostKeys {
         return "SHA256:" + b64.replacingOccurrences(of: "=", with: "")
     }
 
-    /// Validator for Citadel: pins on first sight, fails on change.
+    /// Validator for Citadel: accepts only the pinned key; an unknown host fails with `Unknown`
+    /// so the app can show the fingerprint and pin it on approval.
     final class Validator: NIOSSHClientServerAuthenticationDelegate, @unchecked Sendable {
         let host: String, port: Int
         init(host: String, port: Int) { self.host = host; self.port = port }
@@ -56,8 +62,7 @@ enum HostKeys {
                                                             got: HostKeys.fingerprint(line)))
                 }
             } else {
-                HostKeys.pin(line, host: host, port: port)
-                validationCompletePromise.succeed(())
+                validationCompletePromise.fail(Unknown(host: host, port: port, line: line))
             }
         }
     }

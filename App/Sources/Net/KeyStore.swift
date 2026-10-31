@@ -91,6 +91,17 @@ enum KeyStore {
         }
     }
 
+    // MARK: Host keys
+
+    static func hostKey(_ hostPort: String) -> String? {
+        (try? read(account: "hostkey." + hostPort)).flatMap { $0.flatMap { String(data: $0, encoding: .utf8) } }
+    }
+
+    static func setHostKey(_ line: String?, for hostPort: String) throws {
+        let account = "hostkey." + hostPort
+        if let line { try write(Data(line.utf8), account: account) } else { delete(account: account) }
+    }
+
     // MARK: Keychain
 
     private static func query(_ account: String) -> [String: Any] {

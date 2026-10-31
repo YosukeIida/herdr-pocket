@@ -218,6 +218,21 @@ final class AppStore {
     /// The last connect failed because the host key changed.
     private(set) var hostKeyMismatch = false
 
+    /// The last connect stopped at a host seen for the first time; its key waits for approval.
+    private(set) var unknownHostKey: HostKeys.Unknown?
+
+    /// Pins the approved first-seen host key and connects again.
+    func trustHostKey(_ key: HostKeys.Unknown) {
+        do {
+            try HostKeys.pin(key.line, host: key.host, port: key.port)
+        } catch {
+            phase = .failed("Couldn't save the host key: \(error.localizedDescription)")
+            return
+        }
+        unknownHostKey = nil
+        reconnect()
+    }
+
     /// Pull-to-refresh / screens that want a step index rather than text.
     /// 0 SSH, 1 starting core, 2 hello, 3 events + layout; -1 when not connecting.
     private(set) var connectStep = -1
@@ -504,6 +519,7 @@ final class AppStore {
             phase = .connected
             connectStep = -1
             hostKeyMismatch = false
+            unknownHostKey = nil
             attempt = 0
             Task { [weak self] in await self?.learnHome(gen: gen) }
         } catch {
@@ -514,7 +530,7 @@ final class AppStore {
     }
 
     private static func isRetryable(_ error: Error) -> Bool {
-        if error is HostKeys.Mismatch || error is KeyStore.KeyError { return false }
+        if error is HostKeys.Mismatch || error is HostKeys.Unknown || error is KeyStore.KeyError { return false }
         if let e = error as? HerdrError, ["auth", "needs_update", "not_installed"].contains(e.kind ?? "") { return false }
         return true
     }
@@ -524,6 +540,7 @@ final class AppStore {
         teardownClient()
         if !retry { reconnectTask?.cancel(); reconnectTask = nil }
         hostKeyMismatch = error is HostKeys.Mismatch
+        unknownHostKey = error as? HostKeys.Unknown
         connectStep = -1
         phase = .failed((error as? LocalizedError)?.errorDescription ?? "\(error)")
         // Only keep trying on our own when there's a session to get back to.

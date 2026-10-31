@@ -274,6 +274,24 @@ struct FailureView: View {
                     .controlSize(.large)
                 }
                 .padding(.top, 6)
+                if let key = store.unknownHostKey {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("New host key").font(HF.ui(15, .semibold))
+                        Text(key.fingerprint)
+                            .font(HF.mono(12.5))
+                            .textSelection(.enabled)
+                            .accessibilityIdentifier("hostKeyFingerprint")
+                        Text("On \(key.host), compare it with: ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub")
+                            .font(HF.ui(13)).foregroundStyle(HC.muted)
+                        Button { store.trustHostKey(key) } label: {
+                            Label("Trust and connect", systemImage: "checkmark.shield")
+                        }
+                        .buttonStyle(.glassProminent)
+                        .font(HF.ui(15, .medium))
+                    }
+                    .padding(14)
+                    .herdrCard()
+                }
                 if store.hostKeyMismatch, let m = store.activeMachine {
                     Button(role: .destructive) { confirmForget = true } label: {
                         Label("Forget host key", systemImage: "key.slash")
@@ -286,7 +304,7 @@ struct FailureView: View {
                             store.reconnect()
                         }
                     } message: {
-                        Text("Pinned: \(store.hostKeyFingerprint(m) ?? "none"). Only do this if \(m.host) was reinstalled; the next key it presents will be trusted.")
+                        Text("Pinned: \(store.hostKeyFingerprint(m) ?? "none"). Only do this if \(m.host) was reinstalled; you will be asked to approve the key it presents next.")
                     }
                 }
                 Text("Check that the host is reachable (e.g. Tailscale is on), the key is in authorized_keys, and herdr-core is installed in ~/.local/bin.")

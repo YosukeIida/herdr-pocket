@@ -15,7 +15,8 @@ struct RootView: View {
         switch store.phase {
         case .connected: return .main
         case .connecting: return hadSession ? .main : .connecting
-        case .failed: return hadSession ? .main : .failed
+        // A first-seen host key needs the approval card on the failure screen even mid-session.
+        case .failed: return hadSession && store.unknownHostKey == nil ? .main : .failed
         // Idle with nothing to show (e.g. Cancel on the connecting screen): the
         // failure screen offers Connect and Edit machine instead of a dead spinner.
         case .idle: return hadSession ? .main : .failed
