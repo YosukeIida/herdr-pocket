@@ -2,5 +2,7 @@
 // see Config/Local.example.xcconfig.
 DEVELOPMENT_TEAM =
 HERDR_BUNDLE_ID = dev.herdr.ios.unofficial
+// Push needs a paid Apple Developer account; a free account signs with App/Herdr-free.entitlements.
+HERDR_ENTITLEMENTS = App/Herdr.entitlements
 
 #include? "Local.xcconfig"
