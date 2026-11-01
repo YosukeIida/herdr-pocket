@@ -798,7 +798,7 @@ final class AppStore {
     }
 
     /// The selected tab's first terminal's live folder, else the space folder, else home.
-    private func startFolder(for space: SpaceRef) -> String {
+    func startFolder(for space: SpaceRef) -> String {
         let tab = selectedTabBySpace[space.id].flatMap { id in space.tabs.first { $0.id == id } } ?? space.tabs.first
         if let addr = tab?.panes.compactMap(\.terminal).first, let cwd = terminals[addr]?.cwd, !cwd.isEmpty { return cwd }
         return space.folder.isEmpty ? home : space.folder

@@ -92,8 +92,8 @@ struct SpaceView: View {
                     .accessibilityLabel("New agent in this space")
             }
         }
-        .sheet(isPresented: $showFiles) { FilesSheet(folder: space.folder, title: name.isEmpty ? "~" : name) }
-        .sheet(isPresented: $showChanges) { ChangesSheet(folder: space.folder, title: name.isEmpty ? "~" : name) }
+        .sheet(isPresented: $showFiles) { FilesSheet(folder: store.startFolder(for: space), title: name.isEmpty ? "~" : name) }
+        .sheet(isPresented: $showChanges) { ChangesSheet(folder: store.startFolder(for: space), title: name.isEmpty ? "~" : name) }
         .onAppear { store.selectedSpaceID = space.id }
     }
 }
