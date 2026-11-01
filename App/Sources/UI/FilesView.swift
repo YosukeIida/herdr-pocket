@@ -404,11 +404,24 @@ private struct WebPreview: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
         let view = WKWebView(frame: .zero, configuration: config)
+        view.navigationDelegate = context.coordinator
         view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         return view
     }
 
     func updateUIView(_ view: WKWebView, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    /// The page itself stays a local file; a link that leaves it opens in Safari.
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        @MainActor
+        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
+            guard action.targetFrame?.isMainFrame ?? true, let url = action.request.url, !url.isFileURL else { return .allow }
+            if url.scheme == "https" || url.scheme == "http" { await UIApplication.shared.open(url) }
+            return .cancel
+        }
+    }
 }
 
 /// The Files sheet for one space: its own stack so folders push inside the sheet.
