@@ -100,9 +100,14 @@ private struct TerminalMenu: View {
     let address: String
     @Environment(AppStore.self) private var store
     @State private var confirmKill = false
+    @State private var showFiles = false
+    @State private var showChanges = false
 
     var body: some View {
         Menu {
+            Button("Files", systemImage: "folder") { showFiles = true }
+            Button("Changes", systemImage: "plusminus") { showChanges = true }
+            Divider()
             Toggle(isOn: Binding(get: { controller.fitToPhone }, set: { controller.setFitToPhone($0) })) {
                 Label("Fit to phone", systemImage: "iphone")
             }
@@ -125,6 +130,8 @@ private struct TerminalMenu: View {
         } message: {
             Text("The program stops on \(store.machineTitle).")
         }
+        .sheet(isPresented: $showFiles) { FilesSheet(folder: store.terminals[address]?.cwd ?? "") }
+        .sheet(isPresented: $showChanges) { ChangesSheet(folder: store.terminals[address]?.cwd ?? "") }
     }
 
     private func interrupt() {

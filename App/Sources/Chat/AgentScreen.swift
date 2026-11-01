@@ -30,13 +30,15 @@ struct AgentScreen: View {
                     }
                 }
             }
-            // A menu, not two more buttons: the title keeps its width.
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu("More", systemImage: "ellipsis") {
-                    Button("Files", systemImage: "folder") { showFiles = true }
-                    Button("Changes", systemImage: "plusminus") { showChanges = true }
+            // A menu, not two more buttons: the title keeps its width. The terminal has its own menu with these in it.
+            if canChat && mode == "chat" {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("More", systemImage: "ellipsis") {
+                        Button("Files", systemImage: "folder") { showFiles = true }
+                        Button("Changes", systemImage: "plusminus") { showChanges = true }
+                    }
+                    .accessibilityIdentifier("agentMore")
                 }
-                .accessibilityIdentifier("agentMore")
             }
         }
         // The agent process's folder: its own shell commands run in child shells, so it stays where the agent started.
