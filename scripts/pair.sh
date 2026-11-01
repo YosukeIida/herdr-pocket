@@ -15,6 +15,8 @@ set -eu
 host="${1:-$(tailscale ip -4 2>/dev/null | head -n 1 || true)}"
 [ -n "$host" ] || host="$(hostname)"
 name="${2:-herdr-pocket-$(date +%Y%m%d-%H%M%S)}"
+# The name becomes the key's comment in authorized_keys; a newline in it would add a second, unrestricted line.
+case "$name" in ""|*[!A-Za-z0-9._-]*) echo "name: letters, digits, '.', '_' and '-' only" >&2; exit 1 ;; esac
 user="$(id -un)"
 port=22
 
@@ -30,15 +32,23 @@ elif command -v nix >/dev/null 2>&1; then qr() { nix run nixpkgs#qrencode -- -t 
 else echo "needs qrencode (or nix) to draw the QR code" >&2; exit 1; fi
 
 dir="$(mktemp -d)"
-trap 'rm -f "$dir/key" "$dir/key.pub"; rmdir "$dir"' EXIT
+cleanup() { rm -f "$dir/key" "$dir/key.pub"; rmdir "$dir" 2>/dev/null || true; }
+trap cleanup EXIT
+# EXIT alone is skipped when a signal ends sh; the private key must not outlive the script.
+trap 'cleanup; exit 1' HUP INT TERM
 ssh-keygen -q -t ed25519 -N "" -C "$name" -f "$dir/key"
 
+pub="$(cat "$dir/key.pub")"
+[ "$(wc -l < "$dir/key.pub")" -eq 1 ] || { echo "unexpected public key file" >&2; exit 1; }
 mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+auth="$HOME/.ssh/authorized_keys"
+# A last line without a newline would swallow ours.
+if [ -s "$auth" ] && [ -n "$(tail -c 1 "$auth")" ]; then echo >> "$auth"; fi
 # restrict: no forwarding, agent or pty; command=: the key can only start herdr-core connect.
-printf 'restrict,command="%s connect" %s\n' "$core" "$(cat "$dir/key.pub")" >> "$HOME/.ssh/authorized_keys"
-chmod 600 "$HOME/.ssh/authorized_keys"
+printf 'restrict,command="%s connect" %s\n' "$core" "$pub" >> "$auth"
+chmod 600 "$auth"
 
-json() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk 'BEGIN{ORS="\\n"} {print}' | sed 's/\\n$//'; }
+json() { printf '%s' "$1" | awk 'BEGIN{ORS=""} {gsub(/\\/,"\\\\"); gsub(/"/,"\\\""); gsub(/\t/,"\\t"); gsub(/\r/,"\\r"); if (NR>1) print "\\n"; print}'; }
 payload="{\"v\":1,\"host\":\"$(json "$host")\",\"port\":$port,\"user\":\"$(json "$user")\",\"hostKey\":\"$(json "$hostkey")\",\"key\":\"$(json "$(cat "$dir/key")")\"}"
 code="herdr-pair:$(printf '%s' "$payload" | base64 | tr -d '\n=' | tr '+/' '-_')"
 

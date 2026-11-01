@@ -205,13 +205,27 @@ final class AppStore {
         let key = try KeyStore.parseOpenSSH(offer.privateKey)
         let m = machines.first { $0.host == offer.host && $0.port == offer.port && $0.user == offer.user }
             ?? MachineConfig(label: offer.host, host: offer.host, port: offer.port, user: offer.user)
-        try KeyStore.setMachineKey(key, for: m.id)
+        // A code never replaces a pinned host key: that is what a Mismatch guards against.
+        if let pinned = try HostKeys.pinned(host: offer.host, port: offer.port), pinned != offer.hostKey {
+            throw HerdrError(code: -1, kind: "host_key_differs",
+                             message: "The code's host key (\(HostKeys.fingerprint(offer.hostKey))) differs from the one pinned for \(offer.host) (\(HostKeys.fingerprint(pinned))). If the machine was reinstalled, forget its host key in Settings first.")
+        }
+        // Pin before the key: if the key write fails, the old key stays (Keychain updates in place).
         try HostKeys.pin(offer.hostKey, host: offer.host, port: offer.port)
+        try KeyStore.setMachineKey(key, for: m.id)
         var saved = m
         saved.usePassword = false
         saveMachine(saved, password: nil)
         connect(to: saved)
     }
+
+    /// The public key a machine is reached with: its own from pairing, else the app key.
+    func publicKeyLine(for machine: UUID) -> String {
+        if let k = try? KeyStore.machineKey(for: machine) { return KeyStore.publicKeyLine(for: k.publicKey, comment: "herdr-pocket-pair") }
+        return publicKeyLine()
+    }
+
+    func isPaired(_ machine: UUID) -> Bool { (try? KeyStore.machineKey(for: machine)) != nil }
 
     /// Replace the app key with a pasted OpenSSH ed25519 private key.
     func importPrivateKey(_ text: String) throws {

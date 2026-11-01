@@ -89,9 +89,13 @@ struct MachineForm: View {
     }
 
     @ViewBuilder private var keySection: some View {
-        let key = store.publicKeyLine()
+        let key = store.publicKeyLine(for: machine.id)
         SectionLabel(title: "This device's key")
         VStack(alignment: .leading, spacing: 12) {
+            if store.isPaired(machine.id) {
+                Text("Paired with a code: this machine has its own key, so importing or regenerating the app key doesn't change it.")
+                    .font(HF.ui(13)).foregroundStyle(HC.dim)
+            }
             Text("Add this line to ~/.ssh/authorized_keys on \(machine.label.isEmpty ? "the machine" : machine.label):")
                 .font(HF.ui(14)).foregroundStyle(HC.muted)
             Text(key.isEmpty ? "Generating key…" : key)

@@ -76,7 +76,7 @@ All five targets are met on the simulator, and Codex chat was added as well. Eve
 
 ## Things on this Mac to undo when done
 
-- `~/.ssh/authorized_keys`: the line with comment `herdr-pocket-simulator-pair` (`restrict,command=…`), added by
+- `~/.ssh/authorized_keys`: the lines with comment `herdr-pocket-simulator-pair` (`restrict,command=…`), added by
   running `scripts/pair.sh` for `testPairWithPastedCode`.
 - `~/.ssh/authorized_keys`: the last line, comment `herdr-pocket-simulator` (the key used by the UI
   tests). Its private key is `docs/private/sim_key` (gitignored); delete both together.
