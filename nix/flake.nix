@@ -21,6 +21,7 @@
           default = pkgs.mkShellNoCC {
             packages = with pkgs; [
               xcodegen
+              qrencode   # scripts/pair.sh draws the pairing QR code
               bun
             ];
           };

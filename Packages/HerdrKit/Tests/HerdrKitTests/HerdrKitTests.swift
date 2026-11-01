@@ -334,3 +334,29 @@ final class AttentionTests: XCTestCase {
         XCTAssertEqual(now.display("t9"), .idle)               // first sighting
     }
 }
+
+final class PairingTests: XCTestCase {
+    private func code(_ obj: [String: Any]) -> String {
+        let data = try! JSONSerialization.data(withJSONObject: obj)
+        let b64 = data.base64EncodedString().replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return PairingOffer.prefix + b64
+    }
+    private let key = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----\n"
+    private let hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJqu"
+
+    func testDecodesWhatPairShPrints() throws {
+        let o = try PairingOffer.decode(code(["v": 1, "host": "100.64.0.9", "port": 2222, "user": "me", "hostKey": hostKey, "key": key]) + "\n")
+        XCTAssertEqual(o, PairingOffer(host: "100.64.0.9", port: 2222, user: "me", hostKey: hostKey, privateKey: key))
+    }
+
+    func testRejectsOtherTextAndIncompleteOffers() {
+        XCTAssertThrowsError(try PairingOffer.decode("orca://pair?code=abc"))
+        XCTAssertThrowsError(try PairingOffer.decode(PairingOffer.prefix + "!!!"))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "host": "h", "user": "u", "hostKey": hostKey, "key": key])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "", "user": "u", "hostKey": hostKey, "key": key])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "user": "u", "hostKey": "AAAA", "key": key])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "port": 0, "user": "u", "hostKey": hostKey, "key": key])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "user": "u", "hostKey": hostKey, "key": "nope"])))
+    }
+}

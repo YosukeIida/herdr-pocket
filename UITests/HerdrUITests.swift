@@ -69,6 +69,25 @@ final class HerdrUITests: XCTestCase {
         shot(app, "home-after-approval")
     }
 
+    /// Pairing: a fresh install pastes the code `scripts/pair.sh` printed ($HERDR_TEST_PAIR_CODE) and
+    /// reaches home with no host key prompt, since the code carries the host key.
+    /// Run after uninstalling the app and resetting the simulator keychain.
+    func testPairWithPastedCode() throws {
+        let code = try XCTUnwrap(ProcessInfo.processInfo.environment["HERDR_TEST_PAIR_CODE"])
+        let app = XCUIApplication()
+        app.launchEnvironment["HERDR_DEBUG_OBSERVE"] = "1"
+        app.launch()
+        let field = app.textFields["pairingCode"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15), "no pairing field on first run")
+        field.tap()
+        field.typeText(code)
+        shot(app, "pairing-code")
+        app.buttons["Pair"].tap()
+        XCTAssertFalse(app.staticTexts["hostKeyFingerprint"].waitForExistence(timeout: 5), "asked for the host key despite the code")
+        XCTAssertTrue(app.buttons["New agent"].waitForExistence(timeout: 30), "did not reach home after pairing")
+        shot(app, "home-after-pairing")
+    }
+
     /// Files: from a space ($HERDR_TEST_SPACE) walk $HERDR_TEST_FILES_PATH (slash-separated folders
     /// under the space folder) and open each of $HERDR_TEST_FILES (comma-separated) in Quick Look.
     /// Needs a pinned host key (run testFirstConnectAsksForHostKey first).

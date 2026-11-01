@@ -23,7 +23,7 @@ When labteam credits run out, do not switch accounts and do not skip the review:
 
 ## Environment
 
-The devshell (`.envrc` → `nix/flake.nix`) provides XcodeGen and bun; Swift and the iOS SDK come from Xcode. Agents get it from dotfiles' agent-switch shims, which load direnv when `claude` or `codex` starts in the repo. Command-line builds need `-skipPackagePluginValidation` (SwiftTerm ships a build plugin). `scripts/bundle-mods.sh` runs as an unsandboxed pre-build step; read any change to it before building.
+The devshell (`.envrc` → `nix/flake.nix`) provides XcodeGen, bun and qrencode (for `scripts/pair.sh`); Swift and the iOS SDK come from Xcode. Agents get it from dotfiles' agent-switch shims, which load direnv when `claude` or `codex` starts in the repo. Command-line builds need `-skipPackagePluginValidation` (SwiftTerm ships a build plugin). `scripts/bundle-mods.sh` runs as an unsandboxed pre-build step; read any change to it before building.
 
 ## Prior art
 

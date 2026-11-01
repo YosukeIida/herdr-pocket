@@ -43,7 +43,8 @@
 
 アプリは user のマシンに SSH の exec チャネルを開き、`herdr-core connect` を実行する。これは、デスクトップアプリがリモートのマシンに使うのと同じ、フレーム化された JSON-RPC のストリームである（`ssh box hc connect`）。マシンに追加でインストールするものはなく、サーバも relay も介さない。
 
-- **ログイン:** アプリは Ed25519 の鍵を Keychain の中に生成する。その公開鍵をマシンの `~/.ssh/authorized_keys` に追加する。オンボーディングの画面に、コピーできる 1 行のコマンドが表示される。パスワードや、貼り付けた秘密鍵でもログインできる。
+- **ペアリング:** マシンで `scripts/pair.sh` を実行する（qrencode のある devshell で）。スクリプトは iPhone 用の SSH の鍵を作り、`herdr-core connect` だけに使える鍵として `~/.ssh/authorized_keys` に登録し（`restrict,command=…`）、鍵・マシンのアドレス・host key を入れた QR コードを表示する。アプリでそれを読み取る（またはコードを貼る）。host key はコードから pin するので、fingerprint を見比べる手順は無い。マシンでは何も待ち受けず、常駐もしない。iPhone の登録を外すときは、その行を消す。
+- **ペアリングを使わないログイン:** アプリは Ed25519 の鍵を Keychain の中に生成する。その公開鍵をマシンの `~/.ssh/authorized_keys` に追加する。オンボーディングの画面に、コピーできる 1 行のコマンドが表示される。パスワードや、貼り付けた秘密鍵でもログインできる。
 - **host key:** 初回の接続では、アプリはログインの前に止まり、マシンの host key の fingerprint を表示する。user が承認すると、その host key を Keychain に pin する。
 - **ネットワーク:** マシンは iPhone から到達できる必要がある。たとえば Tailscale を経由する。
 - **Chat:** マシン上の Claude Code の transcript を、読み取り専用の短い `python3` スクリプトで読む。スクリプトは herdr-core の `machine.exec` を通して実行する。セッションは、terminal のプロセスツリーから `~/.claude/sessions` を介して特定する。transcript は末尾だけを読み、その後は新しく追加されたバイトだけを読む。そのため、大きな transcript でも負荷は小さい。 Codex では、terminal のプロセスが開いている rollout を読む。共有の app-server につながった Codex は rollout を開いていないので、terminal の title（thread の名前）とフォルダから、Codex の state のデータベースで thread を引く。起動したばかりの Codex は、最初のメッセージを送るまで rollout を持たない。

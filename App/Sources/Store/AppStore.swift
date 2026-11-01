@@ -187,6 +187,7 @@ final class AppStore {
         }
         machines.removeAll { $0.id == id }
         KeyStore.setPassword(nil, for: id)
+        try? KeyStore.setMachineKey(nil, for: id)
         HostKeys.forget(host: m.host, port: m.port)
         for k in ["attention.", "view.", "home."] { defaults.removeObject(forKey: k + id.uuidString) }
     }
@@ -197,6 +198,19 @@ final class AppStore {
         let k = KeyStore.publicKeyLine()
         if !k.isEmpty { cachedPublicKey = k }
         return k
+    }
+
+    /// Adds the machine a `scripts/pair.sh` code describes, with its own key and its host key pinned, and connects.
+    func pair(_ offer: PairingOffer) throws {
+        let key = try KeyStore.parseOpenSSH(offer.privateKey)
+        let m = machines.first { $0.host == offer.host && $0.port == offer.port && $0.user == offer.user }
+            ?? MachineConfig(label: offer.host, host: offer.host, port: offer.port, user: offer.user)
+        try KeyStore.setMachineKey(key, for: m.id)
+        try HostKeys.pin(offer.hostKey, host: offer.host, port: offer.port)
+        var saved = m
+        saved.usePassword = false
+        saveMachine(saved, password: nil)
+        connect(to: saved)
     }
 
     /// Replace the app key with a pasted OpenSSH ed25519 private key.
@@ -486,7 +500,7 @@ final class AppStore {
         guard step("\(verb) to \(m.host)", 0, gen) else { return }
         let auth: CitadelTransport.Auth
         do {
-            if m.usePassword, let pw = KeyStore.password(for: m.id) { auth = .password(pw) } else { auth = .key(try KeyStore.signingKey()) }
+            if m.usePassword, let pw = KeyStore.password(for: m.id) { auth = .password(pw) } else { auth = .key(try KeyStore.machineKey(for: m.id) ?? KeyStore.signingKey()) }
         } catch {
             fail(error, gen: gen, retry: false); return
         }

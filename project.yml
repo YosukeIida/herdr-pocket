@@ -48,6 +48,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         NSLocalNetworkUsageDescription: "Herdr connects to your machines over SSH on your network."
+        NSCameraUsageDescription: "Herdr scans the pairing code that scripts/pair.sh shows on your machine."
         UIAppFonts: [Geist-Regular.ttf, Geist-Medium.ttf, Geist-SemiBold.ttf, Geist-Bold.ttf, Geist-Italic.ttf, Geist-SemiBoldItalic.ttf, JetBrainsMono-Variable.ttf, JetBrainsMono-Italic-Variable.ttf, SymbolsNerdFont-Regular.ttf]
         ITSAppUsesNonExemptEncryption: false
     preBuildScripts:

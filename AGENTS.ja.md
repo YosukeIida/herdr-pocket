@@ -25,7 +25,7 @@ labteam のクレジットが切れたら、アカウントを切り替えず、
 
 ## 環境
 
-devshell（`.envrc` → `nix/flake.nix`）が XcodeGen と bun を入れる。Swift と iOS の SDK は Xcode のものを使う。agent には、dotfiles の agent-switch の shim が、repo で `claude` か `codex` を起動したときに direnv を読み込んで効かせる。コマンドラインでのビルドには `-skipPackagePluginValidation` が要る（SwiftTerm が build plugin を持つ）。`scripts/bundle-mods.sh` は sandbox なしの pre-build として動くので、変更があればビルドの前に読む。
+devshell（`.envrc` → `nix/flake.nix`）が XcodeGen、bun、qrencode（`scripts/pair.sh` 用）を入れる。Swift と iOS の SDK は Xcode のものを使う。agent には、dotfiles の agent-switch の shim が、repo で `claude` か `codex` を起動したときに direnv を読み込んで効かせる。コマンドラインでのビルドには `-skipPackagePluginValidation` が要る（SwiftTerm が build plugin を持つ）。`scripts/bundle-mods.sh` は sandbox なしの pre-build として動くので、変更があればビルドの前に読む。
 
 ## 先行実装
 

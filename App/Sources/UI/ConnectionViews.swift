@@ -1,5 +1,6 @@
 import SwiftUI
 import HerdrKit
+import VisionKit
 
 // MARK: Onboarding
 
@@ -44,6 +45,7 @@ struct MachineForm: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if machine.host.isEmpty { PairingCard() }
             SectionLabel(title: "Machine")
             VStack(spacing: 0) {
                 field("Name", text: $machine.label, prompt: "my-box")
@@ -324,6 +326,95 @@ struct FailureView: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel", systemImage: "xmark") { editing = false } } }
             }
             .presentationDetents([.large])
+        }
+    }
+}
+
+// MARK: Pairing
+
+/// Adds a machine from the code `scripts/pair.sh` shows on it: scanned with the camera, or pasted.
+struct PairingCard: View {
+    @Environment(AppStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    @State private var scanning = false
+    @State private var code = ""
+    @State private var error: String?
+
+    var body: some View {
+        SectionLabel(title: "Pair with a code")
+        VStack(alignment: .leading, spacing: 12) {
+            Text("On the machine, run scripts/pair.sh from herdr-pocket. It authorizes a key for herdr-core only and shows a QR code.")
+                .font(HF.ui(14)).foregroundStyle(HC.muted)
+            if PairingScanner.available {
+                Button { scanning = true } label: {
+                    Label("Scan pairing code", systemImage: "qrcode.viewfinder").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.glassProminent)
+            }
+            HStack(spacing: 10) {
+                TextField("or paste herdr-pair:…", text: $code)
+                    .font(HF.mono(13)).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .accessibilityIdentifier("pairingCode")
+                Button("Pair") { use(code) }.buttonStyle(.glass).disabled(code.isEmpty)
+            }
+            if let error {
+                Label(error, systemImage: "exclamationmark.triangle.fill").font(HF.ui(13.5)).foregroundStyle(HC.blocked)
+            }
+        }
+        .padding(14)
+        .herdrCard()
+        .fullScreenCover(isPresented: $scanning) {
+            PairingScanner { text in scanning = false; use(text) }
+                .ignoresSafeArea()
+                .overlay(alignment: .topTrailing) {
+                    Button("Cancel", systemImage: "xmark") { scanning = false }.buttonStyle(.glass).padding(20)
+                }
+        }
+    }
+
+    private func use(_ text: String) {
+        do {
+            try store.pair(PairingOffer.decode(text))
+            error = nil
+            dismiss()
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+}
+
+
+
+/// The camera, reporting the first QR code it reads.
+struct PairingScanner: UIViewControllerRepresentable {
+    var onCode: (String) -> Void
+
+    static var available: Bool { DataScannerViewController.isSupported && DataScannerViewController.isAvailable }
+
+    func makeUIViewController(context: Context) -> DataScannerViewController {
+        let vc = DataScannerViewController(recognizedDataTypes: [.barcode(symbologies: [.qr])], qualityLevel: .accurate,
+                                           isHighlightingEnabled: true)
+        vc.delegate = context.coordinator
+        try? vc.startScanning()
+        return vc
+    }
+
+    func updateUIViewController(_ vc: DataScannerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onCode: onCode) }
+
+    final class Coordinator: NSObject, DataScannerViewControllerDelegate {
+        let onCode: (String) -> Void
+        private var done = false
+        init(onCode: @escaping (String) -> Void) { self.onCode = onCode }
+
+        func dataScanner(_ scanner: DataScannerViewController, didAdd items: [RecognizedItem], allItems: [RecognizedItem]) {
+            for case .barcode(let b) in items {
+                guard !done, let s = b.payloadStringValue, s.hasPrefix(PairingOffer.prefix) else { continue }
+                done = true
+                scanner.stopScanning()
+                onCode(s)
+            }
         }
     }
 }

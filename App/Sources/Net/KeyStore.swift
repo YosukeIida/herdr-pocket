@@ -64,7 +64,17 @@ enum KeyStore {
         try write(Curve25519.Signing.PrivateKey().rawRepresentation, account: keyAccount)
     }
 
-    private static func parseOpenSSH(_ text: String) throws -> Curve25519.Signing.PrivateKey {
+    /// A machine's own key, from pairing; nil when the machine uses the app key.
+    static func machineKey(for machine: UUID) throws -> Curve25519.Signing.PrivateKey? {
+        try read(account: "key." + machine.uuidString).map { try Curve25519.Signing.PrivateKey(rawRepresentation: $0) }
+    }
+
+    static func setMachineKey(_ key: Curve25519.Signing.PrivateKey?, for machine: UUID) throws {
+        let account = "key." + machine.uuidString
+        if let key { try write(key.rawRepresentation, account: account) } else { delete(account: account) }
+    }
+
+    static func parseOpenSSH(_ text: String) throws -> Curve25519.Signing.PrivateKey {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.contains("BEGIN OPENSSH PRIVATE KEY") else {
             throw KeyError.badKey("That isn't an OpenSSH private key (it should start with -----BEGIN OPENSSH PRIVATE KEY-----)")
