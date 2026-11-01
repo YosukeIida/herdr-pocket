@@ -395,39 +395,20 @@ struct FilesView: View {
     }
 }
 
-/// A downloaded HTML page or SVG, with scripts off and file access limited to its own folder.
+/// A downloaded HTML page or SVG, with file access limited to its own folder.
 private struct WebPreview: UIViewRepresentable {
     let url: URL
 
-    /// Blocks every load that is not a local file, so a page from the box can't reach the network.
-    static let localOnly = #"[{"trigger":{"url-filter":".*"},"action":{"type":"block"}},{"trigger":{"url-filter":"^file:"},"action":{"type":"ignore-previous-rules"}}]"#
-
+    // Why not scripts off and network blocked: slides, Artifacts and KaTeX pages draw with JavaScript from CDNs and showed blank.
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.defaultWebpagePreferences.allowsContentJavaScript = false
         config.websiteDataStore = .nonPersistent()
         let view = WKWebView(frame: .zero, configuration: config)
-        view.navigationDelegate = context.coordinator
-        let url = url
-        Task { @MainActor in
-            // Nothing loads until the block list is in place.
-            guard let rules = try? await WKContentRuleListStore.default().compileContentRuleList(forIdentifier: "herdr-local-only", encodedContentRuleList: Self.localOnly) else { return }
-            view.configuration.userContentController.add(rules)
-            view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        }
+        view.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         return view
     }
 
     func updateUIView(_ view: WKWebView, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    /// Links and redirects stay inside local files.
-    final class Coordinator: NSObject, WKNavigationDelegate {
-        func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction) async -> WKNavigationActionPolicy {
-            action.request.url?.isFileURL == true ? .allow : .cancel
-        }
-    }
 }
 
 /// The Files sheet for one space: its own stack so folders push inside the sheet.

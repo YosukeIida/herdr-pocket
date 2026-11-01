@@ -54,8 +54,8 @@ All five targets are met on the simulator, and Codex chat was added as well. Eve
   xlsx and png from `build/preview-fixtures/` (gitignored; recreate with textutil, cupsfilter, sips
   and openpyxl via uvx; the png must be opaque; md, html, json, csv, swift, svg, jpg, gif, heic and
   pptx were added by hand). All of them open; Markdown opens in Chat's renderer instead of Quick Look,
-  which shows the raw source. HTML and SVG open in a WKWebView at phone width, with JavaScript off and
-  every non-file load blocked.
+  which shows the raw source. HTML and SVG open in a WKWebView at phone width, with JavaScript on and
+  network loads allowed.
 - Chat (1f37e96): Claude Code and Codex. `testChatRendersAndFolds` and `testChatSendGetsReply` pass
   against throwaway terminals (`hc run --bg --name claude-chat-test claude --strict-mcp-config`,
   and `CODEX_HOME=$HOME/.codex-labteam hc run --bg --name codex-chat-test codex`, both in this repo):
