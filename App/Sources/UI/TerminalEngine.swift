@@ -462,22 +462,28 @@ final class ObserverBag {
 /// font, so SwiftTerm's own size math lands on the program's real size;
 /// zoom scales it to fit the phone (min ~7pt effective), pinch zooms, and
 /// the scroll view pans when it doesn't fit.
-/// While the program asks for the mouse (Claude Code, Codex), a vertical one-finger drag sends
-/// wheel steps so the program scrolls itself; a horizontal one pans the viewport (`TerminalViewport`);
-/// long press, then Select, selects text.
+/// While the program asks for the mouse (Claude Code, Codex), one finger drags the mouse, so the
+/// program selects and copies; two fingers send wheel steps when vertical and pan the viewport
+/// (`TerminalViewport`) when sideways.
 final class HerdrTerminalView: TerminalView {
     private(set) var mouseOn = false
     private var carried: CGFloat = 0
     private lazy var wheel: UIPanGestureRecognizer = {
         let g = UIPanGestureRecognizer(target: self, action: #selector(wheelPan))
-        g.maximumNumberOfTouches = 1
+        g.minimumNumberOfTouches = 2
+        g.maximumNumberOfTouches = 2
         g.isEnabled = false
         addGestureRecognizer(g)
         return g
     }()
 
-    // Why not super: SwiftTerm then forwards every drag as a mouse drag, so nothing scrolls or pans.
     override func mouseModeChanged(source: Terminal) {
+        let before = Set((gestureRecognizers ?? []).map(ObjectIdentifier.init))
+        super.mouseModeChanged(source: source)
+        // SwiftTerm's mouse drag takes any number of fingers; two are kept for the wheel and the pan.
+        for g in gestureRecognizers ?? [] where !before.contains(ObjectIdentifier(g)) {
+            (g as? UIPanGestureRecognizer)?.maximumNumberOfTouches = 1
+        }
         mouseOn = source.mouseMode != .off
         wheel.isEnabled = mouseOn
         isScrollEnabled = !mouseOn
@@ -485,7 +491,7 @@ final class HerdrTerminalView: TerminalView {
 
     override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
         guard g === wheel else { return super.gestureRecognizerShouldBegin(g) }
-        return !selectionActive && Self.vertical(wheel.velocity(in: self))
+        return Self.vertical(wheel.velocity(in: self))
     }
 
     static func vertical(_ v: CGPoint) -> Bool { abs(v.y) > abs(v.x) }
@@ -641,10 +647,10 @@ final class TerminalViewport: UIScrollView, UIScrollViewDelegate {
         }
     }
 
-    // One finger pans only sideways while the program takes the mouse; vertical drags are its wheel.
+    // While the program takes the mouse, one finger is its drag and two vertical fingers its wheel.
     override func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
-        guard g === panGestureRecognizer, term.mouseOn, panGestureRecognizer.numberOfTouches < 2 else { return super.gestureRecognizerShouldBegin(g) }
-        return !term.selectionActive && !HerdrTerminalView.vertical(panGestureRecognizer.velocity(in: self)) && super.gestureRecognizerShouldBegin(g)
+        guard g === panGestureRecognizer, term.mouseOn else { return super.gestureRecognizerShouldBegin(g) }
+        return panGestureRecognizer.numberOfTouches >= 2 && !HerdrTerminalView.vertical(panGestureRecognizer.velocity(in: self)) && super.gestureRecognizerShouldBegin(g)
     }
 
     func viewForZooming(in scrollView: UIScrollView) -> UIView? { term }
