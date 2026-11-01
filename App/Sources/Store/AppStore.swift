@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CryptoKit
 import HerdrKit
 
 /// Where to connect. Persisted in UserDefaults (the key lives in the Keychain).
@@ -202,7 +203,7 @@ final class AppStore {
 
     /// Adds the machine a `scripts/pair.sh` code describes, with its own key and its host key pinned, and connects.
     func pair(_ offer: PairingOffer) throws {
-        let key = try KeyStore.parseOpenSSH(offer.privateKey)
+        let key = try Curve25519.Signing.PrivateKey(rawRepresentation: offer.seed)
         let m = machines.first { $0.host == offer.host && $0.port == offer.port && $0.user == offer.user }
             ?? MachineConfig(label: offer.host, host: offer.host, port: offer.port, user: offer.user)
         // A code never replaces a pinned host key: that is what a Mismatch guards against.

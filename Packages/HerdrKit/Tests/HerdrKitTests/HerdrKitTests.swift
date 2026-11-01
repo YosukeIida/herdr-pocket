@@ -342,21 +342,21 @@ final class PairingTests: XCTestCase {
             .replacingOccurrences(of: "=", with: "")
         return PairingOffer.prefix + b64
     }
-    private let key = "-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----\n"
-    private let hostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJqu"
+    private let k = Data(repeating: 7, count: 51).base64EncodedString()
+    private let s = Data(repeating: 9, count: 32).base64EncodedString()
 
     func testDecodesWhatPairShPrints() throws {
-        let o = try PairingOffer.decode(code(["v": 1, "host": "100.64.0.9", "port": 2222, "user": "me", "hostKey": hostKey, "key": key]) + "\n")
-        XCTAssertEqual(o, PairingOffer(host: "100.64.0.9", port: 2222, user: "me", hostKey: hostKey, privateKey: key))
+        let o = try PairingOffer.decode(code(["v": 2, "h": "100.64.0.9", "p": 2222, "u": "me", "k": k, "s": s]) + "\n")
+        XCTAssertEqual(o, PairingOffer(host: "100.64.0.9", port: 2222, user: "me", hostKey: "ssh-ed25519 " + k, seed: Data(repeating: 9, count: 32)))
     }
 
     func testRejectsOtherTextAndIncompleteOffers() {
         XCTAssertThrowsError(try PairingOffer.decode("orca://pair?code=abc"))
         XCTAssertThrowsError(try PairingOffer.decode(PairingOffer.prefix + "!!!"))
-        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "host": "h", "user": "u", "hostKey": hostKey, "key": key])))
-        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "", "user": "u", "hostKey": hostKey, "key": key])))
-        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "user": "u", "hostKey": "AAAA", "key": key])))
-        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "port": 0, "user": "u", "hostKey": hostKey, "key": key])))
-        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "host": "h", "user": "u", "hostKey": hostKey, "key": "nope"])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 1, "h": "h", "u": "u", "k": k, "s": s])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "h": "", "u": "u", "k": k, "s": s])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "h": "h", "u": "u", "k": "AAAA", "s": s])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "h": "h", "p": 0, "u": "u", "k": k, "s": s])))
+        XCTAssertThrowsError(try PairingOffer.decode(code(["v": 2, "h": "h", "u": "u", "k": k, "s": "nope"])))
     }
 }

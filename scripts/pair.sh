@@ -25,10 +25,10 @@ core="$(command -v herdr-core || true)"
 [ -x "$core" ] || { echo "herdr-core is not installed here" >&2; exit 1; }
 case "$core" in *[!A-Za-z0-9/._-]*) echo "can't use herdr-core at $core (unusual characters in the path)" >&2; exit 1 ;; esac
 
-hostkey="$(awk '{print $1" "$2}' /etc/ssh/ssh_host_ed25519_key.pub)"
+hostkey="$(awk '{print $2}' /etc/ssh/ssh_host_ed25519_key.pub)"
 
-if command -v qrencode >/dev/null 2>&1; then qr() { qrencode -t ansiutf8 -l M; }
-elif command -v nix >/dev/null 2>&1; then qr() { nix run nixpkgs#qrencode -- -t ansiutf8 -l M; }
+if command -v qrencode >/dev/null 2>&1; then qr() { qrencode -t ansiutf8 -l L -m 2; }
+elif command -v nix >/dev/null 2>&1; then qr() { nix run nixpkgs#qrencode -- -t ansiutf8 -l L -m 2; }
 else echo "needs qrencode (or nix) to draw the QR code" >&2; exit 1; fi
 
 dir="$(mktemp -d)"
@@ -49,7 +49,10 @@ printf 'restrict,command="%s connect" %s\n' "$core" "$pub" >> "$auth"
 chmod 600 "$auth"
 
 json() { printf '%s' "$1" | awk 'BEGIN{ORS=""} {gsub(/\\/,"\\\\"); gsub(/"/,"\\\""); gsub(/\t/,"\\t"); gsub(/\r/,"\\r"); if (NR>1) print "\\n"; print}'; }
-payload="{\"v\":1,\"host\":\"$(json "$host")\",\"port\":$port,\"user\":\"$(json "$user")\",\"hostKey\":\"$(json "$hostkey")\",\"key\":\"$(json "$(cat "$dir/key")")\"}"
+# The 32-byte Ed25519 seed sits at a fixed offset in an unencrypted OpenSSH ed25519 key file (the comment comes after it).
+seed="$(sed '1d;$d' "$dir/key" | tr -d '\n' | base64 -d | dd bs=1 skip=161 count=32 2>/dev/null | base64 | tr -d '\n')"
+[ "${#seed}" -eq 44 ] || { echo "couldn't read the new key" >&2; exit 1; }
+payload="{\"v\":2,\"h\":\"$(json "$host")\",\"p\":$port,\"u\":\"$(json "$user")\",\"k\":\"$hostkey\",\"s\":\"$seed\"}"
 code="herdr-pair:$(printf '%s' "$payload" | base64 | tr -d '\n=' | tr '+/' '-_')"
 
 if [ "${HERDR_PAIR_PRINT:-}" = 1 ]; then printf '%s\n' "$code"; exit 0; fi
