@@ -52,11 +52,16 @@ final class ChatModel {
     private(set) var turns: [ChatTurn] = []
     /// The transcript continues above what was loaded (we only read its tail).
     private(set) var hasEarlier = false
+    private(set) var loadingEarlier = false
     private(set) var revision = 0
 
     private var entries: [ChatEntry] = []
     private var session = ""
     private var offset: Int64 = -1
+    /// Where the loaded part of the transcript begins.
+    private var start: Int64 = 0
+    /// The sequence number of `entries[0]`; earlier windows count down, so ids already shown never change.
+    private var firstSeq = 0
     private var loop: Task<Void, Never>?
     private var wake: CheckedContinuation<Void, Never>?
     private var sleeper: Task<Void, Never>?
@@ -104,16 +109,39 @@ final class ChatModel {
         }
     }
 
-    private func load() async {
-        guard let store, store.phase == .connected, let rec = store.terminals[address] else { return }
-        let pid = rec.raw["pid"].int.map(String.init) ?? "0"
+    /// The transcript script and its leading arguments for this terminal.
+    private func invocation(_ store: AppStore) -> [String]? {
+        guard let rec = store.terminals[address] else { return nil }
         let codex = store.programKey(of: address) == "codex"
-        let script = codex ? CodexTranscriptScript.source : TranscriptScript.source
         let context: JSONValue = codex ? ["title": .string(rec.title), "cwd": .string(rec.cwd)] : rec.raw["argv"]
-        let argv = String(decoding: context.encoded(), as: UTF8.self)
+        return ["python3", "-c", codex ? CodexTranscriptScript.source : TranscriptScript.source,
+                rec.raw["pid"].int.map(String.init) ?? "0", String(decoding: context.encoded(), as: UTF8.self)]
+    }
+
+    /// Reads the window above what is loaded and puts it in front.
+    func loadEarlier() async {
+        guard hasEarlier, !loadingEarlier, let store, store.phase == .connected, let call = invocation(store) else { return }
+        loadingEarlier = true
+        defer { loadingEarlier = false }
+        guard let r = try? await store.exec(argv: call + [session, "-1", String(start)], cwd: nil, on: nil, timeout: 20, input: nil),
+              r.code == 0 else { return }
+        var lines = r.stdout.split(separator: UInt8(ascii: "\n"))
+        // Anything else (the session changed meanwhile) leaves the chat as it is.
+        guard !lines.isEmpty, let head = try? JSONValue.parse(Data(lines.removeFirst())), head["earlier"].bool == true,
+              head["session"].string == session else { return }
+        let earlier = lines.compactMap { (try? JSONValue.parse(Data($0))).flatMap(Self.entry) }
+        entries = earlier + entries
+        firstSeq -= earlier.count
+        start = Int64(head["start"].double ?? 0)
+        hasEarlier = start > 0
+        rebuild()
+    }
+
+    private func load() async {
+        guard let store, store.phase == .connected, let call = invocation(store) else { return }
         for _ in 0..<4 {   // follow "more" a few times on a big backlog
             do {
-                let r = try await store.exec(argv: ["python3", "-c", script, pid, argv, session, String(offset)],
+                let r = try await store.exec(argv: call + [session, String(offset)],
                                              cwd: nil, on: nil, timeout: 20, input: nil)
                 guard r.code == 0 else {
                     let err = String(decoding: r.stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -142,8 +170,10 @@ final class ChatModel {
         let fresh = head["fresh"].bool ?? false
         if fresh {
             entries = []
+            firstSeq = 0
             session = head["session"].string ?? ""
-            hasEarlier = (head["start"].int ?? 0) > 0
+            start = Int64(head["start"].double ?? 0)
+            hasEarlier = start > 0
         }
         offset = Int64(head["next"].double ?? Double(offset))
         var added = false
@@ -182,13 +212,16 @@ final class ChatModel {
     private func rebuild() {
         var out: [ChatTurn] = []
         var where_: [String: (turn: Int, step: Int, call: Int)] = [:]
-        var n = 0
-        func next() -> Int { n += 1; return n }
+        // A turn takes its entry's sequence number times two, a step that number plus one: one entry makes at most one of each.
+        var seq = 0
+        func next() -> Int { seq * 2 }
+        func step() -> Int { seq * 2 + 1 }
         func current() -> Int {
             if out.isEmpty { out.append(ChatTurn(id: next())) }
             return out.count - 1
         }
-        for e in entries {
+        for (i, e) in entries.enumerated() {
+            seq = firstSeq + i
             switch e {
             case .user(let s, let at): out.append(ChatTurn(id: next(), prompt: .user(s), startedAt: at))
             case .note(let s): out.append(ChatTurn(id: next(), prompt: .note(s)))
@@ -198,7 +231,7 @@ final class ChatModel {
                 if let last = out.last, last.compacted, last.prompt == nil, last.steps.isEmpty { continue }
                 out.append(ChatTurn(id: next(), compacted: true))
             case .text(let s):
-                let i = current(); out[i].steps.append(.text(next(), s))
+                let i = current(); out[i].steps.append(.text(step(), s))
             case .tool(let id, let name, let sum, let detail, let at):
                 let i = current()
                 if out[i].startedAt == nil { out[i].startedAt = at }
@@ -208,7 +241,7 @@ final class ChatModel {
                     out[i].steps[out[i].steps.count - 1] = .tools(sid, calls)
                     where_[id] = (i, out[i].steps.count - 1, calls.count - 1)
                 } else {
-                    out[i].steps.append(.tools(next(), [call]))
+                    out[i].steps.append(.tools(step(), [call]))
                     where_[id] = (i, out[i].steps.count - 1, 0)
                 }
             case .result(let id, let err, let output):

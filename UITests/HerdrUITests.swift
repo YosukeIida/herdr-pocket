@@ -193,6 +193,30 @@ final class HerdrUITests: XCTestCase {
         if tool.exists { tool.tap(); sleep(1); shot(app, "chat-tool-open") }
     }
 
+    /// From an agent ($HERDR_TEST_TERMINAL), earlier messages load above the tail, and Files opens at the
+    /// agent's project root, listing $HERDR_TEST_ROOT_ENTRY.
+    func testAgentChatEarlierAndFiles() throws {
+        let env = ProcessInfo.processInfo.environment
+        let app = launch(["HERDR_DEBUG_OPEN": env["HERDR_TEST_TERMINAL"] ?? "t1"])
+        let earlier = app.buttons["chatEarlier"]
+        var tries = 0
+        while !(earlier.exists && earlier.isHittable) && tries < 40 { app.swipeDown(); tries += 1 }
+        app.swipeDown()   // hittable can still mean half under the navigation bar
+        XCTAssertTrue(earlier.exists, "no Show earlier messages button")
+        shot(app, "chat-before-earlier")
+        let first = app.staticTexts.allElementsBoundByIndex.filter(\.isHittable).prefix(3).map(\.label)
+        earlier.tap()
+        sleep(4)
+        shot(app, "chat-earlier")
+        // The view stays at the top, which now holds the older messages.
+        XCTAssertNotEqual(app.staticTexts.allElementsBoundByIndex.filter(\.isHittable).prefix(3).map(\.label), first, "nothing was added above")
+        app.buttons["agentMore"].tap()
+        app.buttons["Files"].tap()
+        let entry = app.buttons[try XCTUnwrap(env["HERDR_TEST_ROOT_ENTRY"])]
+        XCTAssertTrue(entry.waitForExistence(timeout: 30), "project root not listed")
+        shot(app, "agent-files")
+    }
+
     /// A scripted tour for the README video (demo data only). Run while
     /// recording; the harness sends a push with `xcrun simctl push` once
     /// the app is in the background.

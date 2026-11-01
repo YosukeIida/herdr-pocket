@@ -87,11 +87,19 @@ path = max(rollouts, key=lambda f: os.path.getmtime(f))
 sid = meta(path).get('id') or os.path.basename(path)[-41:-6]
 size = os.path.getsize(path)
 fresh = sid != known or off < 0 or off > size
-if fresh:
+end = size
+# argv[5], when given: read the window that ends where the loaded part starts ("show earlier").
+before = int(sys.argv[5]) if len(sys.argv) > 5 else -1
+if before >= 0:
+    if sid != known or before > size:
+        print(json.dumps({'k': 'head', 'session': sid, 'why': 'moved'})); sys.exit(0)
+    end, off, fresh = before, max(0, before - INITIAL), True
+elif fresh:
     off = max(0, size - INITIAL)
 
 out = []
-def emit(**e): out.append(json.dumps(e, ensure_ascii=False))
+at = [0]   # where the record being read starts
+def emit(**e): out.append((at[0], json.dumps(e, ensure_ascii=False)))
 def cut(s, n): s = str(s or ''); return s if len(s) <= n else s[:n] + '…'
 def short(p):
     p = str(p or '')
@@ -110,7 +118,7 @@ def summary(i):
 
 with open(path, 'rb') as f:
     f.seek(off)
-    data = f.read(min(size - off, MAXREAD))
+    data = f.read(min(end - off, MAXREAD))
 if fresh and off > 0:
     nl = data.find(b'\n')
     data = data[nl + 1:] if nl >= 0 else b''
@@ -122,7 +130,9 @@ data = data[:end + 1] if end >= 0 else b''
 # Waiting for the newline of a record longer than MAXREAD would reread the same window forever.
 nxt = off + (read if end < 0 and read >= MAXREAD else len(data))
 
+pos = off
 for raw in data.split(b'\n'):
+    at[0] = pos; pos += len(raw) + 1
     if not raw or (b'"item_completed"' not in raw and b'"task_complete"' not in raw): continue
     try: d = json.loads(raw)
     except Exception: continue
@@ -150,9 +160,14 @@ for raw in data.split(b'\n'):
         rest = {k: v for k, v in i.items() if k not in ('type', 'id')}
         emit(k='tool', id=i.get('id') or '', name=kind, sum=cut(summary(i), 200), detail=cut(json.dumps(rest, ensure_ascii=False, indent=1), 1200), ts=ts)
 
-print(json.dumps({'k': 'head', 'session': sid, 'path': short(path), 'size': size, 'next': nxt, 'start': start, 'fresh': fresh, 'more': nxt < size}))
-print('\n'.join(out))
+# A fresh or earlier window sends only its last KEEP entries; the phone asks for the rest with <before> = start.
+if fresh and len(out) > KEEP:
+    start = out[-KEEP][0]
+    out = [o for o in out if o[0] >= start]
+print(json.dumps({'k': 'head', 'session': sid, 'path': short(path), 'size': size, 'next': nxt, 'start': start, 'fresh': fresh, 'earlier': before >= 0, 'more': nxt < size}))
+print('\n'.join(e for _, e in out))
 """#
         .replacingOccurrences(of: "INITIAL", with: String(TranscriptScript.initialTail))
+        .replacingOccurrences(of: "KEEP", with: String(TranscriptScript.keepEntries))
         .replacingOccurrences(of: "MAXREAD", with: String(TranscriptScript.maxRead))
 }

@@ -5,12 +5,15 @@ import Foundation
 /// as compact JSON lines, one per entry the chat shows. Transcripts reach
 /// hundreds of MB, so the phone only ever reads the tail and then new bytes.
 ///
-/// argv: <terminal pid> <terminal argv JSON> <known session id or ""> <offset, -1 = tail>
-/// First line: {"k":"head","session","path","size","next","start","more"}; then entries:
+/// argv: <terminal pid> <terminal argv JSON> <known session id or ""> <offset, -1 = tail> [<before>]
+/// With <before>, reads the window that ends there instead (the part above what the phone has).
+/// First line: {"k":"head","session","path","size","next","start","earlier","more"}; then entries:
 ///   user {t, ts} · note {t} · cmd {t} · compact · text {t} · tool {id, name, sum, detail}
 ///   result {id, err, out} · dur {ms}
 enum TranscriptScript {
     static let initialTail = 16 << 20
+    /// Entries sent for a fresh or earlier window: the box reads 16 MiB fast, but sending and laying out all of it is what made Chat slow to open.
+    static let keepEntries = 150
     static let maxRead = 16 << 20
 
     static let source = #"""
@@ -78,11 +81,19 @@ if not files:
 path = max(files, key=lambda f: os.path.getmtime(f))
 size = os.path.getsize(path)
 fresh = sid != known or off < 0 or off > size
-if fresh:
+end = size
+# argv[5], when given: read the window that ends where the loaded part starts ("show earlier").
+before = int(sys.argv[5]) if len(sys.argv) > 5 else -1
+if before >= 0:
+    if sid != known or before > size:
+        print(json.dumps({'k': 'head', 'session': sid, 'why': 'moved'})); sys.exit(0)
+    end, off, fresh = before, max(0, before - INITIAL), True
+elif fresh:
     off = max(0, size - INITIAL)
 
 out = []
-def emit(**e): out.append(json.dumps(e, ensure_ascii=False))
+at = [0]   # where the record being read starts
+def emit(**e): out.append((at[0], json.dumps(e, ensure_ascii=False)))
 def cut(s, n): return s if len(s) <= n else s[:n] + '…'
 def tag(s, name):
     m = re.search('<%s>(.*?)</%s>' % (name, name), s, re.S)
@@ -120,7 +131,7 @@ def detail(name, i):
 
 with open(path, 'rb') as f:
     f.seek(off)
-    data = f.read(min(size - off, MAXREAD))
+    data = f.read(min(end - off, MAXREAD))
 if fresh and off > 0:
     nl = data.find(b'\n')
     data = data[nl + 1:] if nl >= 0 else b''
@@ -132,7 +143,9 @@ data = data[:end + 1] if end >= 0 else b''
 # Waiting for the newline of a record longer than MAXREAD would reread the same window forever.
 nxt = off + (read if end < 0 and read >= MAXREAD else len(data))
 
+pos = off
 for raw in data.split(b'\n'):
+    at[0] = pos; pos += len(raw) + 1
     if not raw or (b'"type":"user"' not in raw and b'"type":"assistant"' not in raw and b'"subtype":"turn_duration"' not in raw and b'"subtype":"compact_boundary"' not in raw):
         continue
     try: d = json.loads(raw)
@@ -173,9 +186,14 @@ for raw in data.split(b'\n'):
                 n = b.get('name') or 'Tool'; i = b.get('input') or {}
                 emit(k='tool', id=b.get('id') or '', name=n, sum=cut(summary(n, i), 200), detail=detail(n, i), ts=ts)
 
-print(json.dumps({'k': 'head', 'session': sid, 'path': short(path), 'size': size, 'next': nxt, 'start': start, 'fresh': fresh, 'more': nxt < size}))
-print('\n'.join(out))
+# A fresh or earlier window sends only its last KEEP entries; the phone asks for the rest with <before> = start.
+if fresh and len(out) > KEEP:
+    start = out[-KEEP][0]
+    out = [o for o in out if o[0] >= start]
+print(json.dumps({'k': 'head', 'session': sid, 'path': short(path), 'size': size, 'next': nxt, 'start': start, 'fresh': fresh, 'earlier': before >= 0, 'more': nxt < size}))
+print('\n'.join(e for _, e in out))
 """#
         .replacingOccurrences(of: "INITIAL", with: String(initialTail))
+        .replacingOccurrences(of: "KEEP", with: String(TranscriptScript.keepEntries))
         .replacingOccurrences(of: "MAXREAD", with: String(maxRead))
 }

@@ -34,10 +34,6 @@ struct SpaceView: View {
         return store.startFolder(for: space)
     }
 
-    private static func title(_ folder: String) -> String {
-        let n = (folder as NSString).lastPathComponent
-        return n.isEmpty ? "~" : n
-    }
 
     private func selectedTab(_ space: SpaceRef) -> TabRef? {
         let id = store.selectedTabBySpace[space.id]
@@ -104,8 +100,8 @@ struct SpaceView: View {
                     .accessibilityLabel("New agent in this space")
             }
         }
-        .sheet(isPresented: $showFiles) { let f = browseFolder(space, tab); FilesSheet(folder: f, title: Self.title(f)) }
-        .sheet(isPresented: $showChanges) { let f = browseFolder(space, tab); ChangesSheet(folder: f, title: Self.title(f)) }
+        .sheet(isPresented: $showFiles) { FilesSheet(folder: browseFolder(space, tab)) }
+        .sheet(isPresented: $showChanges) { ChangesSheet(folder: browseFolder(space, tab)) }
         .onAppear { store.selectedSpaceID = space.id }
     }
 }
@@ -173,6 +169,7 @@ struct TabChipBar: View {
 struct PaneCard: View {
     @Environment(AppStore.self) private var store
     @Environment(Navigator.self) private var nav
+    @AppStorage("agentViewMode") private var mode = "chat"
     var pane: PaneRef
     var spaceName: String
 
@@ -183,7 +180,11 @@ struct PaneCard: View {
                     VStack(spacing: 0) {
                         header(addr)
                         Rectangle().fill(HC.border).frame(height: HM.hairline)
-                        TerminalPreview(address: addr)
+                        if mode == "chat" && ["claude", "codex"].contains(store.programKey(of: addr)) {
+                            ChatPreview(address: addr)
+                        } else {
+                            TerminalPreview(address: addr)
+                        }
                     }
                     .contentShape(.rect)
                 }
@@ -218,6 +219,45 @@ struct PaneCard: View {
         }
         .padding(.horizontal, 12)
         .frame(height: 40)
+    }
+}
+
+/// The last turns of a Claude Code or Codex conversation, in the same mode as the agent page.
+struct ChatPreview: View {
+    @Environment(AppStore.self) private var store
+    @State private var model: ChatModel
+
+    init(address: String) { _model = State(initialValue: ChatModel(address: address)) }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            HC.background
+            if model.turns.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "text.bubble").font(.system(size: 22, weight: .light)).foregroundStyle(HC.dim)
+                    Text(model.phase == .loading ? "Loading…" : "Tap to open").font(HF.ui(13)).foregroundStyle(HC.dim)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                Color.clear
+                    .overlay(alignment: .bottomLeading) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(model.turns.suffix(3)) { t in
+                                if case .user(let s)? = t.prompt {
+                                    Text(s).font(HF.ui(13, .medium)).foregroundStyle(HC.fg).lineLimit(3)
+                                }
+                                if case .text(_, let s)? = t.steps.last {
+                                    Text(s).font(HF.ui(13)).foregroundStyle(HC.muted).lineLimit(8)
+                                }
+                            }
+                        }
+                        .padding(12)
+                    }
+                    .clipped()
+            }
+        }
+        .onAppear { model.start(store: store) }
+        .onDisappear { model.stop() }
     }
 }
 

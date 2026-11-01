@@ -804,6 +804,22 @@ final class AppStore {
         return space.folder.isEmpty ? home : space.folder
     }
 
+    /// A box path with "~" expanded: argv reaches programs without a shell.
+    func absolutePath(_ p: String) -> String {
+        if p.isEmpty || p == "~" { return home }
+        if p.hasPrefix("~/") { return home + p.dropFirst(1) }
+        return p
+    }
+
+    /// The git repository `folder` is in, else `folder` itself.
+    func projectRoot(_ folder: String) async -> String {
+        let dir = absolutePath(folder)
+        guard let r = try? await exec(argv: ["git", "-C", dir, "rev-parse", "--show-toplevel"], cwd: nil, on: nil, timeout: 20, input: nil),
+              r.code == 0 else { return dir }
+        let top = String(decoding: r.stdout, as: UTF8.self).trimmingCharacters(in: .newlines)
+        return top.isEmpty ? dir : top
+    }
+
     /// Keeps the selection pointing at things that exist.
     private func fixSelection() {
         guard !spaces.isEmpty else { return }

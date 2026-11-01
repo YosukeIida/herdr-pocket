@@ -431,13 +431,22 @@ private struct WebPreview: UIViewRepresentable {
 
 /// The Files sheet for one space: its own stack so folders push inside the sheet.
 struct FilesSheet: View {
+    @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    /// A folder inside the project; the sheet opens at the project's root.
     var folder: String
-    var title: String
+    @State private var root: String?
 
     var body: some View {
         NavigationStack {
-            FilesView(path: folder.isEmpty ? "~" : folder, title: title)
+            Group {
+                if let root {
+                    FilesView(path: root, title: (root as NSString).lastPathComponent)
+                } else {
+                    ProgressView()
+                }
+            }
+                .task { root = await store.projectRoot(folder) }
                 .navigationDestination(for: String.self) { p in
                     FilesView(path: p, title: (p as NSString).lastPathComponent)
                 }

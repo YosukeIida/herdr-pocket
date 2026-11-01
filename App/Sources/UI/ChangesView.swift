@@ -7,7 +7,7 @@ struct ChangesSheet: View {
     @Environment(AppStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     var folder: String
-    var title: String
+    private var title: String { ((root.isEmpty ? folder : root) as NSString).lastPathComponent }
 
     struct Change: Hashable, Identifiable {
         var code: String   // porcelain XY, e.g. " M", "A ", "??"
@@ -49,17 +49,10 @@ struct ChangesSheet: View {
         }
     }
 
-    /// The space folder as an absolute path: argv reaches git without a shell, so "~" is not expanded.
-    private var absoluteFolder: String {
-        if folder.isEmpty || folder == "~" { return store.home }
-        if folder.hasPrefix("~/") { return store.home + folder.dropFirst(1) }
-        return folder
-    }
-
     private func load() async {
         do {
             // Porcelain paths are relative to the repo root, so status and every diff run there.
-            let top = try await store.exec(argv: ["git", "-C", absoluteFolder, "rev-parse", "--show-toplevel"], cwd: nil, on: nil, timeout: 20, input: nil)
+            let top = try await store.exec(argv: ["git", "-C", store.absolutePath(folder), "rev-parse", "--show-toplevel"], cwd: nil, on: nil, timeout: 20, input: nil)
             guard top.code == 0 else { error = DiffView.failure(top, "\(title) is not in a git repository."); return }
             let dir = String(decoding: top.stdout, as: UTF8.self).trimmingCharacters(in: .newlines)
             let head = try await store.exec(argv: ["git", "-C", dir, "rev-parse", "--verify", "-q", "HEAD"], cwd: nil, on: nil, timeout: 20, input: nil)

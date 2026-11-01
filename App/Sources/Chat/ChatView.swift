@@ -58,8 +58,16 @@ struct ChatView: View {
             emptyState("exclamationmark.triangle", "Couldn't read the conversation", hint: why)
         default:
             if model.hasEarlier {
-                Label("Earlier messages are in the terminal's history", systemImage: "clock.arrow.circlepath")
-                    .font(HF.ui(12.5)).foregroundStyle(HC.dim).frame(maxWidth: .infinity)
+                Button { Task { await model.loadEarlier() } } label: {
+                    HStack(spacing: 8) {
+                        if model.loadingEarlier { ProgressView() } else { Image(systemName: "clock.arrow.circlepath") }
+                        Text("Show earlier messages")
+                    }
+                    .font(HF.ui(13)).foregroundStyle(HC.muted).frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .disabled(model.loadingEarlier)
+                .accessibilityIdentifier("chatEarlier")
             }
             ForEach(model.turns) { turn in
                 TurnView(turn: turn, isLast: turn.id == model.turns.last?.id, working: working)

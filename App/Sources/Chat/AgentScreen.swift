@@ -8,6 +8,8 @@ struct AgentScreen: View {
     let address: String
     @Environment(AppStore.self) private var store
     @AppStorage("agentViewMode") private var mode = "chat"
+    @State private var showFiles = false
+    @State private var showChanges = false
 
     var body: some View {
         let canChat = ["claude", "codex"].contains(store.programKey(of: address))
@@ -28,7 +30,18 @@ struct AgentScreen: View {
                     }
                 }
             }
+            // A menu, not two more buttons: the title keeps its width.
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("More", systemImage: "ellipsis") {
+                    Button("Files", systemImage: "folder") { showFiles = true }
+                    Button("Changes", systemImage: "plusminus") { showChanges = true }
+                }
+                .accessibilityIdentifier("agentMore")
+            }
         }
+        // The agent process's folder: its own shell commands run in child shells, so it stays where the agent started.
+        .sheet(isPresented: $showFiles) { FilesSheet(folder: store.terminals[address]?.cwd ?? "") }
+        .sheet(isPresented: $showChanges) { ChangesSheet(folder: store.terminals[address]?.cwd ?? "") }
     }
 }
 
