@@ -190,6 +190,15 @@ for raw in data.split(b'\n'):
 if fresh and len(out) > KEEP:
     start = out[-KEEP][0]
     out = [o for o in out if o[0] >= start]
+if fresh:
+    # Long entries could still pass the core's 8 MB stdout cap; drop the oldest until the rest fit in half of it.
+    sizes = [len(e.encode('utf-8')) + 1 for _, e in out]
+    total, i = sum(sizes), 0
+    while i < len(out) - 1 and total > 4000000:
+        total -= sizes[i]; i += 1
+    if i:
+        start = out[i][0]
+        out = [o for o in out if o[0] >= start]
 print(json.dumps({'k': 'head', 'session': sid, 'path': short(path), 'size': size, 'next': nxt, 'start': start, 'fresh': fresh, 'earlier': before >= 0, 'more': nxt < size}))
 print('\n'.join(e for _, e in out))
 """#

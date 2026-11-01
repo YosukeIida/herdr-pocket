@@ -132,10 +132,11 @@ struct FilesView: View {
                     continue
                 out.append([p, isdir, 0 if isdir else os.lstat(full).st_size, None])
             else:
-                st = os.stat(full)
+                # lstat and O_NOFOLLOW: a link could point outside the folder or at an ignored file.
+                st = os.lstat(full)
                 if not stat.S_ISREG(st.st_mode) or st.st_size > 1 << 20:
                     continue
-                with open(full, "rb") as f:
+                with os.fdopen(os.open(full, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as f:
                     data = f.read()
                 if b"\\0" in data[:8192]:
                     continue
@@ -156,7 +157,7 @@ struct FilesView: View {
             if let error {
                 Text(error).font(HF.ui(14)).foregroundStyle(HC.blocked)
             }
-            if !query.isEmpty {
+            if !query.trimmingCharacters(in: .whitespaces).isEmpty {
                 if let results {
                     if results.isEmpty { Text("No matches.").font(HF.ui(14)).foregroundStyle(HC.dim) }
                     ForEach(results) { e in

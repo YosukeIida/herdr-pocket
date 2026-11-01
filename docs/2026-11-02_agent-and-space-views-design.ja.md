@@ -17,7 +17,7 @@
 
 カードの本文はアプリ全体のモードに従う。Chat モードでは、Claude Code と Codex のペインは端末の末尾の代わりに直近のメッセージを表示する。他のプログラムは端末の末尾のままとする。カードの見出しに `AgentScreen` と同じ切り替えボタンを置き、カードをタップするとそのモードで `AgentScreen` を開く。
 
-負荷: 表示中のカードはそれぞれ、マシン上で transcript を読む（Chat のスクリプト）。iPhone は 1 枚ずつ表示するが、ページの View は隣のカードも作る。iPad のグリッドは全部を表示する。読み取りは、現在の `TerminalPreview` と同じく、turn か状態が変わったときに行う。
+負荷: 表示中のカードはそれぞれ、マシン上で transcript を読む（Chat のスクリプト）。iPhone は 1 枚ずつ表示するが、ページの View は隣のカードも作る。iPad のグリッドは全部を表示する。実装では、カードは Chat と同じ間隔で読み取りを繰り返す（agent の作業中は 1.5 秒、それ以外は 6 秒ごと）。最初の読み取りの後は、新しく追加されたバイトだけを受け取る。
 
 採らない案: space の画面の中に Chat のタブを別に作る。`AgentScreen` と重複するためである。
 
@@ -31,11 +31,11 @@ agent のプロセスの作業ディレクトリが変わらない理由: Claude
 
 ### 3. 両方の画面で同じ規則
 
-space の画面も同じ起点を使う。画面に出ている端末の現在のディレクトリではなく、その project の root を使う。1 つの関数 `AppStore.projectRoot(of: address)` が、両方の画面の Files と Changes を受け持つ。Changes はすでに自分で git の root を求めているので、動作が変わるのは Files だけである。端末がサブフォルダにいても、repo の root から開く。
+space の画面も同じ起点を使う。画面に出ている端末の現在のディレクトリではなく、その project の root を使う。実装では、`AppStore.projectRoot(_ folder:)` が両方の画面の Files を受け持つ。Changes はすでに自分で git の root を求めている。そのため、動作が変わるのは Files だけである。端末がサブフォルダにいても、repo の root から開く。
 
 ## 作業の順序
 
-1. `projectRoot(of:)`、`AgentScreen` の Files と Changes、space の画面を project の root に切り替える変更。UI テスト: agent から Files を開き、repo の root が出ることを確かめる。
+1. `projectRoot(_:)`、`AgentScreen` の Files と Changes、space の画面を project の root に切り替える変更。UI テスト: agent から Files を開き、repo の root が出ることを確かめる。
 2. space のカードの Chat のプレビュー。
 3. 各段階の Codex の review。
 

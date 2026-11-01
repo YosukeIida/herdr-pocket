@@ -124,7 +124,7 @@ final class ChatModel {
         loadingEarlier = true
         defer { loadingEarlier = false }
         guard let r = try? await store.exec(argv: call + [session, "-1", String(start)], cwd: nil, on: nil, timeout: 20, input: nil),
-              r.code == 0 else { return }
+              r.code == 0, !r.truncated else { return }
         var lines = r.stdout.split(separator: UInt8(ascii: "\n"))
         // Anything else (the session changed meanwhile) leaves the chat as it is.
         guard !lines.isEmpty, let head = try? JSONValue.parse(Data(lines.removeFirst())), head["earlier"].bool == true,

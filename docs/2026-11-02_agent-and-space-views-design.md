@@ -17,7 +17,7 @@ So the two paths already meet: a pane card opens the same `AgentScreen` as the a
 
 The card body follows the app-wide mode: in Chat mode a Claude Code or Codex pane shows the last few messages instead of the terminal tail; other programs keep the terminal tail. The card header gets the same switch button as `AgentScreen`, and tapping the card opens `AgentScreen` in that mode.
 
-Cost: each visible card reads its transcript on the box (the Chat script). A phone shows one card at a time, but the page view builds its neighbours too; an iPad grid shows all of them. Reads happen when the turn or status changes, as `TerminalPreview` does now.
+Cost: each visible card reads its transcript on the box (the Chat script). A phone shows one card at a time, but the page view builds its neighbours too; an iPad grid shows all of them. As implemented, a card polls like Chat itself (every 1.5 s while the agent works, 6 s otherwise), receiving only new bytes after the first read.
 
 Rejected: a separate Chat tab inside the space page. It would duplicate `AgentScreen`.
 
@@ -31,11 +31,11 @@ Why the agent process's directory is stable: Claude Code and Codex run their she
 
 ### 3. One rule for both pages
 
-The space page uses the same root: the project root of the terminal on screen, instead of its current directory. One function, `AppStore.projectRoot(of: address)`, serves Files and Changes on both pages. Changes already resolves the git root itself, so only Files changes behaviour: a terminal sitting in a subfolder opens at the repository root.
+The space page uses the same root: the project root of the terminal on screen, instead of its current directory. As implemented, `AppStore.projectRoot(_ folder:)` serves Files on both pages; Changes already resolves the git root itself. So only Files changes behaviour: a terminal sitting in a subfolder opens at the repository root.
 
 ## Order of work
 
-1. `projectRoot(of:)`, Files and Changes on `AgentScreen`, the space page switched to the project root. UI test: open Files from an agent and see the repository root.
+1. `projectRoot(_:)`, Files and Changes on `AgentScreen`, the space page switched to the project root. UI test: open Files from an agent and see the repository root.
 2. Chat preview on the space cards.
 3. Codex review of each step.
 
