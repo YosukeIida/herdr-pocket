@@ -25,4 +25,7 @@ Codex は、`docs/HANDOVER.md` が分割読みと HTML・SVG を未実装と書�
 - 一時 repo での git の argv。rename は rename として表示され、`*.txt` は文字どおりに扱われ、最初の commit の前は `--cached` で表示され、サブフォルダからルートを取得できる。
 - アプリと UI テストの実機向けのビルド。
 
-simulator では未確認である。作業中に Xcode が 27.2 へ自動更新され、simulator を使うには `sudo xcodebuild -runFirstLaunch` が必要になった。
+修正後に simulator（Xcode 27.2）で確認したこと:
+- `testFilesPreviewInQuickLook` で、15 MB の PNG（2400×2400）、HTML、SVG、Markdown、PDF が開いた。PNG は下端の赤い帯まで表示され、最後まで読めていた。
+- `http://127.0.0.1:8765/…` を読み込む HTML を開いても、そのサーバへの要求は 0 件であった。同じ simulator の Safari からは 4 件届いたので、遮断が効いている。
+- `testChangesShowDiff` で、追跡されていないファイルが一覧に出て、その diff が表示された。

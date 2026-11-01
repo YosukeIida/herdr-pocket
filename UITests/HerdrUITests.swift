@@ -89,13 +89,14 @@ final class HerdrUITests: XCTestCase {
             row.tap()
             // Quick Look, or the app's own sheet for Markdown, HTML and SVG.
             let done = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'QLOverlayDoneButton' OR identifier == 'markdownClose' OR identifier == 'webClose'")).firstMatch
-            // Images open full screen with the controls hidden; a tap brings them back.
-            if !done.waitForExistence(timeout: 90) { app.tap() }
-            XCTAssertTrue(done.waitForExistence(timeout: 15), "Quick Look did not open \(name)")
+            // Large files take a while to arrive, and Quick Look hides its controls on images; a tap shows them.
+            var shown = done.waitForExistence(timeout: 20)
+            for _ in 0..<20 where !shown { app.tap(); shown = done.waitForExistence(timeout: 4) }
+            XCTAssertTrue(shown, "Quick Look did not open \(name)")
             sleep(2)
             shot(app, "preview-\(name)")
-            if !done.isHittable { app.tap() }
-            XCTAssertTrue(done.waitForExistence(timeout: 5), "no close button for \(name)")
+            for _ in 0..<5 where !done.isHittable { app.tap(); _ = done.waitForExistence(timeout: 2) }
+            XCTAssertTrue(done.isHittable, "no close button for \(name)")
             done.tap()
             XCTAssertTrue(row.waitForExistence(timeout: 10), "did not return to the list after \(name)")
         }
