@@ -20,13 +20,12 @@ struct AgentScreen: View {
         }
         .toolbar {
             if canChat {
+                // Why not a segmented Picker: iOS 26 draws it as a second capsule inside the toolbar's glass.
                 ToolbarItem(placement: .topBarTrailing) {
-                    Picker("View", selection: $mode.animation(.smooth(duration: 0.25))) {
-                        Image(systemName: "text.bubble").tag("chat").accessibilityLabel("Chat")
-                        Image(systemName: "terminal").tag("terminal").accessibilityLabel("Terminal")
+                    let chat = mode == "chat"
+                    Button(chat ? "Terminal" : "Chat", systemImage: chat ? "terminal" : "text.bubble") {
+                        withAnimation(.smooth(duration: 0.25)) { mode = chat ? "terminal" : "chat" }
                     }
-                    .pickerStyle(.segmented)
-                    .frame(width: 92)
                 }
             }
         }

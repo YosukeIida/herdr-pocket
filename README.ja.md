@@ -31,7 +31,7 @@
   - 終わったターンは「Worked for 5m 18s · 12 steps」の下に折りたたむ。
   - 各ツール呼び出しは、タップできる 1 行で表示する。
   - ブロックされた agent のダイアログはボタンになる。
-- **Files。** マシン上で、space の端末がいるフォルダ（space を作ったときのフォルダではなく、端末の現在のディレクトリ）を閲覧し、PDF、Word・Excel・PowerPoint の文書、画像（HEIC を含む）、テキストを iPhone 上の Quick Look で開く。Markdown は整形して表示する。HTML と SVG は、スクリプトとネットワークの読み込みを止めたうえで、画面の幅で表示する。256 MiB までのファイルを分割して読む。
+- **Files。** 画面に出ている端末のフォルダ（space を作ったときのフォルダではなく、端末の現在のディレクトリ）を閲覧し、ファイル名または中身で検索し（git の repo の中では .gitignore に従う）、PDF、Word・Excel・PowerPoint の文書、画像（HEIC を含む）、テキストを iPhone 上の Quick Look で開く。Markdown は整形して表示する。HTML と SVG は、スクリプトとネットワークの読み込みを止めたうえで、画面の幅で表示する。256 MiB までのファイルを分割して読む。
 - **Changes。** space の git の未 commit の変更を一覧にし、ファイルごとの diff を色分けして表示する。git はマシン上で読み取り専用で実行する。
 - **Terminal。** 本物の terminal（SwiftTerm）である。既定ではデスクトップと同じサイズを映し、ピンチでズームできる。「Fit to phone」のトグルを使うと、代わりに iPhone の画面に合わせてサイズを変える。ガラス調のキーバーが esc、ctrl、矢印キー、^C を加え、入力欄からプロンプト全体を送れる。
 - **新しい agent。** Claude Code、Codex、shell、または herdr の一覧にある任意のプログラムを起動する。起動先は既存の space か新しいフォルダで、最初のタスクを任意で指定できる。

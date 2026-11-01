@@ -27,6 +27,18 @@ struct SpaceView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
+    /// The folder of the terminal on screen (the page shown on a phone; on iPad, where every pane shows, the tab's first).
+    private func browseFolder(_ space: SpaceRef, _ tab: TabRef?) -> String {
+        if hsc != .regular, let tab, tab.panes.indices.contains(paneIndex), let addr = tab.panes[paneIndex].terminal,
+           let cwd = store.terminals[addr]?.cwd, !cwd.isEmpty { return cwd }
+        return store.startFolder(for: space)
+    }
+
+    private static func title(_ folder: String) -> String {
+        let n = (folder as NSString).lastPathComponent
+        return n.isEmpty ? "~" : n
+    }
+
     private func selectedTab(_ space: SpaceRef) -> TabRef? {
         let id = store.selectedTabBySpace[space.id]
         return space.tabs.first { $0.id == id } ?? space.tabs.first
@@ -92,8 +104,8 @@ struct SpaceView: View {
                     .accessibilityLabel("New agent in this space")
             }
         }
-        .sheet(isPresented: $showFiles) { FilesSheet(folder: store.startFolder(for: space), title: name.isEmpty ? "~" : name) }
-        .sheet(isPresented: $showChanges) { ChangesSheet(folder: store.startFolder(for: space), title: name.isEmpty ? "~" : name) }
+        .sheet(isPresented: $showFiles) { let f = browseFolder(space, tab); FilesSheet(folder: f, title: Self.title(f)) }
+        .sheet(isPresented: $showChanges) { let f = browseFolder(space, tab); ChangesSheet(folder: f, title: Self.title(f)) }
         .onAppear { store.selectedSpaceID = space.id }
     }
 }

@@ -14,9 +14,17 @@ struct FilesView: View {
         var name: String
         var isDir: Bool
         var size: Int
+        /// A Contents search's first matching line.
+        var snippet: String? = nil
         var id: String { name }
     }
 
+    enum Scope: Hashable { case names, contents }
+
+    @State private var query = ""
+    @State private var scope = Scope.names
+    @State private var results: [Entry]?
+    @State private var partial = false
     @State private var dir: String?
     @State private var entries: [Entry] = []
     @State private var skipped = 0
@@ -78,11 +86,91 @@ struct FilesView: View {
     sys.stdout.buffer.write(b"%d %d\\n" % (st.st_size, st.st_mtime_ns) + data)
     """
 
+    // Prints {"results": [[relative path, is_dir, size, snippet]], "partial"}: names (folders too) or text lines
+    // containing argv[2], case-insensitively, under argv[1]. Stops at 200 results or 8 seconds.
+    static let searchScript = """
+    import json, os, stat, subprocess, sys, time
+    root, q, mode = sys.argv[1], sys.argv[2].lower(), sys.argv[3]
+
+    def paths():
+        # In a git work tree, what git lists (tracked and untracked, minus .gitignore), with their folders.
+        try:
+            r = subprocess.run(["git", "-C", root, "ls-files", "-co", "--exclude-standard", "-z"], capture_output=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            r = None
+        if r is not None and r.returncode == 0:
+            seen = set()
+            for p in sorted(os.fsdecode(x) for x in r.stdout.split(b"\\0") if x):
+                parts = p.split("/")
+                for i in range(1, len(parts)):
+                    d = "/".join(parts[:i])
+                    if d not in seen:
+                        seen.add(d)
+                        yield d, True
+                yield p, False
+            return
+        # shortcut: outside git, prunes a fixed list of heavy folders; read ignore files if results get noisy.
+        skip = {".git", "node_modules", ".venv", "__pycache__", ".build", "DerivedData", ".direnv"}
+        for d, dirs, files in os.walk(root):
+            dirs[:] = sorted(x for x in dirs if x not in skip)
+            rel = os.path.relpath(d, root)
+            for n, isdir in [(x, True) for x in dirs] + [(x, False) for x in sorted(files)]:
+                yield (n if rel == "." else os.path.join(rel, n)), isdir
+
+    out, start, partial = [], time.monotonic(), False
+    for p, isdir in paths():
+        if time.monotonic() - start > 8:
+            partial = True
+            break
+        if isdir and mode != "names":
+            continue
+        try:
+            p.encode("utf-8")
+            full = os.path.join(root, p)
+            if mode == "names":
+                if q not in os.path.basename(p).lower():
+                    continue
+                out.append([p, isdir, 0 if isdir else os.lstat(full).st_size, None])
+            else:
+                st = os.stat(full)
+                if not stat.S_ISREG(st.st_mode) or st.st_size > 1 << 20:
+                    continue
+                with open(full, "rb") as f:
+                    data = f.read()
+                if b"\\0" in data[:8192]:
+                    continue
+                line = next((l for l in data.decode("utf-8", "replace").splitlines() if q in l.lower()), None)
+                if line is None:
+                    continue
+                out.append([p, False, st.st_size, line.strip()[:200]])
+        except (OSError, UnicodeEncodeError):
+            continue
+        if len(out) >= 200:
+            partial = True
+            break
+    print(json.dumps({"results": out, "partial": partial}))
+    """
+
     var body: some View {
         List {
             if let error {
                 Text(error).font(HF.ui(14)).foregroundStyle(HC.blocked)
             }
+            if !query.isEmpty {
+                if let results {
+                    if results.isEmpty { Text("No matches.").font(HF.ui(14)).foregroundStyle(HC.dim) }
+                    ForEach(results) { e in
+                        if e.isDir, let dir {
+                            NavigationLink(value: dir + "/" + e.name) { row(e) }
+                        } else {
+                            Button { open(e) } label: { row(e) }.disabled(opening != nil)
+                        }
+                    }
+                    if partial { Text("Showing the first matches only.").font(HF.ui(13)).foregroundStyle(HC.dim) }
+                } else {
+                    HStack { Spacer(); ProgressView(); Spacer() }
+                }
+            } else {
             ForEach(entries) { e in
                 if e.isDir, let dir {
                     NavigationLink(value: dir + "/" + e.name) { row(e) }
@@ -95,10 +183,17 @@ struct FilesView: View {
                 Text("\(skipped) item(s) with names that can't be shown are hidden.")
                     .font(HF.ui(13)).foregroundStyle(HC.dim)
             }
+            }
         }
         .overlay { if dir == nil && error == nil { ProgressView() } }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Find files")
+        .searchScopes($scope) {
+            Text("Names").tag(Scope.names)
+            Text("Contents").tag(Scope.contents)
+        }
+        .task(id: "\(scope)\u{0}\(query)\u{0}\(dir ?? "")") { await search() }
         .task { await load() }
         .refreshable { await load() }
         .quickLookPreview($preview)
@@ -131,7 +226,10 @@ struct FilesView: View {
             Image(systemName: e.isDir ? "folder" : "doc")
                 .foregroundStyle(e.isDir ? HC.working : HC.muted)
                 .frame(width: 22)
-            Text(e.name).font(HF.ui(15.5)).foregroundStyle(HC.fg).lineLimit(1)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(e.name).font(HF.ui(15.5)).foregroundStyle(HC.fg).lineLimit(1).truncationMode(.head)
+                if let s = e.snippet { Text(s).font(HF.mono(12)).foregroundStyle(HC.dim).lineLimit(2) }
+            }
             Spacer(minLength: 8)
             if opening == e.name {
                 if let progress { Text(progress).font(HF.ui(13)).foregroundStyle(HC.dim).monospacedDigit() }
@@ -165,6 +263,29 @@ struct FilesView: View {
             error = nil
         } catch {
             self.error = Self.message(error)
+        }
+    }
+
+    /// Runs `searchScript` under the current folder once typing pauses; a newer query cancels this one.
+    private func search() async {
+        results = nil; partial = false
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty, let dir else { return }
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        do {
+            let r = try await store.exec(argv: ["python3", "-c", Self.searchScript, dir, q, scope == .names ? "names" : "contents"],
+                                         cwd: nil, on: nil, timeout: 20, input: nil)
+            guard !Task.isCancelled else { return }
+            guard r.code == 0, let v = try? JSONValue.parse(r.stdout) else { error = Self.failure(r, "Couldn't search \(dir)"); return }
+            results = (v["results"].array ?? []).compactMap { a in
+                guard let n = a[0].string else { return nil }
+                return Entry(name: n, isDir: a[1].bool ?? false, size: a[2].int ?? 0, snippet: a[3].string)
+            }
+            partial = v["partial"].bool ?? false
+            error = nil
+        } catch {
+            if !Task.isCancelled { self.error = Self.message(error) }
         }
     }
 
@@ -202,7 +323,8 @@ struct FilesView: View {
                     .appendingPathComponent("preview", isDirectory: true)
                     .appendingPathComponent(UUID().uuidString, isDirectory: true)
                 try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                let url = folder.appendingPathComponent(e.name)
+                let base = (e.name as NSString).lastPathComponent
+                let url = folder.appendingPathComponent(base)
                 error = nil
                 // Why not Quick Look for HTML and SVG: it lays HTML out at desktop width and SVG at its own size.
                 switch (e.name as NSString).pathExtension.lowercased() {
@@ -212,7 +334,7 @@ struct FilesView: View {
                 case "svg":
                     try data.write(to: url, options: .completeFileProtection)
                     let page = folder.appendingPathComponent("index.html")
-                    try Self.wrapper(image: e.name).write(to: page, options: .completeFileProtection)
+                    try Self.wrapper(image: base).write(to: page, options: .completeFileProtection)
                     web = WebDoc(name: e.name, url: page)
                 default:
                     try data.write(to: url, options: .completeFileProtection)
