@@ -29,7 +29,8 @@ A native iPhone and iPad client for [herdr](https://herdr.dev). See which of you
   - finished turns fold behind "Worked for 5m 18s · 12 steps";
   - each tool call is one tappable line;
   - a blocked agent's dialog becomes buttons.
-- **Files.** Browse a space's folder on the box and open PDFs, Word, Excel and PowerPoint documents, images (including HEIC) and text in Quick Look, on the phone; Markdown is rendered as formatted text. Files over 8 MiB are not previewed yet.
+- **Files.** Browse a space's folder on the box and open PDFs, Word, Excel and PowerPoint documents, images (including HEIC) and text in Quick Look, on the phone; Markdown is rendered as formatted text. HTML and SVG open at phone width with scripts and network loads off. Files up to 256 MiB are read in chunks.
+- **Changes.** A space's uncommitted git changes, and each file's diff coloured by line, from the box's git (read-only).
 - **Terminal.** The real terminal (SwiftTerm), mirroring the desktop size by default with pinch-to-zoom. A "Fit to phone" toggle resizes it to the phone instead. A glass key bar adds esc, ctrl, arrows and ^C, and a compose box sends whole prompts.
 - **New agents.** Start Claude Code, Codex, a shell or any program from herdr's list, in an existing space or a new folder, with an optional first task.
 - **Notifications.** Get "OAuth needs you" (with the agent's question and options) or "Refactor finished", even when the app is closed; tap to open that agent. Your machine sends them straight to Apple, with no relay in between.

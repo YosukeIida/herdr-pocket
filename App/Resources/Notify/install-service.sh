@@ -9,6 +9,8 @@ py="$(command -v python3)"
 
 # XML text for a plist <string>.
 xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+# A quoted word in a systemd unit: backslashes and quotes escaped, % doubled.
+unit() { printf "%s" "$1" | sed -e "s/\\\\/\\\\\\\\/g" -e "s/\"/\\\\\"/g" -e "s/%/%%/g"; }
 
 if [ "$(uname)" = Darwin ]; then
   label=dev.herdr.notify
@@ -46,7 +48,7 @@ Description=Herdr for iOS push notifications
 After=network-online.target
 
 [Service]
-ExecStart="$py" "%h/.config/herdr-ios/herdr-notify.py"
+ExecStart="$(unit "$py")" "%h/.config/herdr-ios/herdr-notify.py"
 Restart=always
 RestartSec=5
 

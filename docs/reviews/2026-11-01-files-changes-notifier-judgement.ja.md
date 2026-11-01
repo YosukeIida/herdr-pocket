@@ -29,3 +29,13 @@ Codex は、`docs/HANDOVER.md` が分割読みと HTML・SVG を未実装と書�
 - `testFilesPreviewInQuickLook` で、15 MB の PNG（2400×2400）、HTML、SVG、Markdown、PDF が開いた。PNG は下端の赤い帯まで表示され、最後まで読めていた。
 - `http://127.0.0.1:8765/…` を読み込む HTML を開いても、そのサーバへの要求は 0 件であった。同じ simulator の Safari からは 4 件届いたので、遮断が効いている。
 - `testChangesShowDiff` で、追跡されていないファイルが一覧に出て、その diff が表示された。
+
+## fa92895 の再レビュー
+
+レビューの原文: `2026-11-01-files-changes-notifier-fixes-codex.md`。以下の 2 件のほかに、残った不具合や新たな不具合は見つからなかった。
+
+| # | 指摘 | 判定 | 理由と変更 |
+|---|---|---|---|
+| 1 | python のパスに `"`・`\`・`%` があると、引用した systemd の `ExecStart` がまだ壊れる | 修正 | `unit()` が `\` と `"` をエスケープし、`%` を二重にする（`/home/a b/My "T"\x/100%/python3` で確認した） |
+| 2 | 切り詰めを知らせる行が 5,000 行の上限の後ろにあり、長い diff では表示されない | 修正 | 切り詰めの状態を別に持ち、行数によらず行の後に表示する |
+| — | README が、8 MiB を超えるファイルはプレビューしないと書いたままであった | 修正 | README（英語版・日本語版）に、分割読み、HTML・SVG、新しい Changes の画面を書いた |

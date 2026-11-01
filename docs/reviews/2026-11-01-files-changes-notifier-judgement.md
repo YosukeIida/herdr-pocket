@@ -19,3 +19,13 @@ Reviewed commit: 282034e. Raw review: `2026-11-01-files-changes-notifier-codex.m
 Codex also noted that `docs/HANDOVER.md` still described chunked reads and HTML/SVG as not built; updated.
 
 Checked: HerdrKit tests (new `testExecReportsTruncatedOutput`), the read script reassembling a 15 MB file in 4,000,000-byte chunks byte for byte, the service script dry-run with `&` and `<` in PATH (plist lints, PATH round-trips), the git argv on a scratch repo (rename shown as rename, `*.txt` literal, `--cached` before the first commit, root from a subfolder), and a device build of the app and UI tests. In the simulator (Xcode 27.2) after the fixes: `testFilesPreviewInQuickLook` opened a 15 MB PNG (2400×2400, red band at the bottom shown, so read to the end), HTML, SVG, Markdown and PDF; a page loading `http://127.0.0.1:8765/…` made no request to that server, while Safari in the same simulator reached it (4 requests); `testChangesShowDiff` listed an untracked file and showed its diff.
+
+## Re-review of fa92895
+
+Raw review: `2026-11-01-files-changes-notifier-fixes-codex.md`. No other remaining or new defects were found.
+
+| # | Finding | Decision | Why / what changed |
+|---|---|---|---|
+| 1 | A python path containing `"`, `\` or `%` still breaks the quoted systemd `ExecStart` | Fix | `unit()` escapes `\` and `"` and doubles `%` (checked on `/home/a b/My "T"\x/100%/python3`) |
+| 2 | The truncation line sits after the 5,000-line cap and disappears on long diffs | Fix | Truncation is kept apart and shown after the lines whatever their count |
+| — | README still said files over 8 MiB are not previewed | Fix | README (EN, JA) describes chunked reads, HTML/SVG and the new Changes screen |

@@ -100,6 +100,7 @@ struct DiffView: View {
     var change: ChangesSheet.Change
 
     @State private var lines: [Substring]?
+    @State private var cut = false
     @State private var error: String?
 
     /// More lines than this are cut off; a phone can't usefully scroll a larger diff.
@@ -118,6 +119,9 @@ struct DiffView: View {
                     }
                     if lines.count > Self.maxLines {
                         Text("\(lines.count - Self.maxLines) more lines not shown.").font(HF.ui(13)).foregroundStyle(HC.dim).padding(10)
+                    }
+                    if cut {
+                        Text("The diff is longer than 8 MB; the rest was not received.").font(HF.ui(13)).foregroundStyle(HC.dim).padding(10)
                     }
                 }
                 .textSelection(.enabled)
@@ -143,9 +147,8 @@ struct DiffView: View {
             let r = try await store.exec(argv: argv, cwd: nil, on: nil, timeout: 30, input: nil)
             guard r.code == 0 || (change.untracked && r.code == 1) else { error = Self.failure(r, "Couldn't diff \(change.path)"); return }
             let text = String(decoding: r.stdout, as: UTF8.self)
-            var out: [Substring] = text.isEmpty ? ["No textual changes (mode or staging only)."] : text.split(separator: "\n", omittingEmptySubsequences: false)
-            if r.truncated { out.append("… the diff is longer than 8 MB and was cut off here.") }
-            lines = out
+            cut = r.truncated
+            lines = text.isEmpty ? ["No textual changes (mode or staging only)."] : text.split(separator: "\n", omittingEmptySubsequences: false)
         } catch {
             self.error = Self.message(error)
         }
