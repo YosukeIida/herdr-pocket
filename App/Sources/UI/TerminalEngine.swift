@@ -462,8 +462,47 @@ final class ObserverBag {
 /// font, so SwiftTerm's own size math lands on the program's real size;
 /// zoom scales it to fit the phone (min ~7pt effective), pinch zooms, and
 /// the scroll view pans when it doesn't fit.
+/// While the program asks for the mouse (Claude Code, Codex), a one-finger vertical drag
+/// sends wheel steps so the program scrolls itself, and two fingers pan the viewport.
+final class HerdrTerminalView: TerminalView {
+    var onMouseMode: ((Bool) -> Void)?
+    private var carried: CGFloat = 0
+    private lazy var wheel: UIPanGestureRecognizer = {
+        let g = UIPanGestureRecognizer(target: self, action: #selector(wheelPan))
+        g.maximumNumberOfTouches = 1
+        g.isEnabled = false
+        addGestureRecognizer(g)
+        return g
+    }()
+
+    // Why not super: SwiftTerm then forwards every drag as a mouse drag, so nothing scrolls or pans.
+    override func mouseModeChanged(source: Terminal) {
+        let on = source.mouseMode != .off
+        wheel.isEnabled = on
+        isScrollEnabled = !on
+        onMouseMode?(on)
+    }
+
+    @objc private func wheelPan(_ g: UIPanGestureRecognizer) {
+        guard g.state == .changed else { carried = 0; return }
+        let t = getTerminal()
+        let cellHeight = bounds.height / CGFloat(max(t.rows, 1))
+        carried += g.translation(in: self).y
+        g.setTranslation(.zero, in: self)
+        let p = g.location(in: self)
+        let x = min(max(Int(p.x / (bounds.width / CGFloat(max(t.cols, 1)))), 0), t.cols - 1)
+        let y = min(max(Int(p.y / cellHeight), 0), t.rows - 1)
+        while abs(carried) >= cellHeight {
+            // Finger down shows earlier lines: wheel up (button 4).
+            let up = carried > 0
+            t.sendEvent(buttonFlags: t.encodeButton(button: up ? 4 : 5, release: false, shift: false, meta: false, control: false), x: x, y: y)
+            carried += up ? -cellHeight : cellHeight
+        }
+    }
+}
+
 final class TerminalViewport: UIScrollView, UIScrollViewDelegate {
-    let term: TerminalView
+    let term: HerdrTerminalView
     private(set) var cell = CGSize(width: 8, height: 17)
     private let fontSize: CGFloat
     private var cols = 0, rows = 0
@@ -476,9 +515,10 @@ final class TerminalViewport: UIScrollView, UIScrollViewDelegate {
 
     init(fontSize: CGFloat) {
         self.fontSize = fontSize
-        term = TerminalView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
+        term = HerdrTerminalView(frame: CGRect(x: 0, y: 0, width: 320, height: 480))
         super.init(frame: .zero)
         delegate = self
+        term.onMouseMode = { [weak self] on in self?.panGestureRecognizer.minimumNumberOfTouches = on ? 2 : 1 }
         bouncesZoom = true
         alwaysBounceVertical = false
         showsHorizontalScrollIndicator = true
